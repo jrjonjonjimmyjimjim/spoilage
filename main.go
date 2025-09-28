@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -48,12 +49,22 @@ func main() {
 			log.Fatal(err)
 		}
 		fmt.Printf("What we got from the request body: %s", requestBody)
+		requestBodyBytes := []byte(requestBody)
+		type NewItemRequest struct {
+			Name           string `json:"item_name"`
+			ExpirationDate string `json:"expires"`
+		}
+		var newItemRequest NewItemRequest
+		err = json.Unmarshal(requestBodyBytes, &newItemRequest)
+		if err != nil {
+			log.Fatal(err)
+		}
 		addItemStatement, err := db.Prepare("INSERT INTO items (name, expiration_date) VALUES (?, ?)")
 		if err != nil {
 			log.Fatal(err)
 		}
 		defer addItemStatement.Close()
-		addItemResult, err := addItemStatement.Exec("Eananum", "12/12/2025")
+		addItemResult, err := addItemStatement.Exec(newItemRequest.Name, newItemRequest.ExpirationDate)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -62,7 +73,7 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		fmt.Fprintf(w, `{"status": "OK", "message": "Added new item: %v"}`, id)
+		fmt.Fprintf(w, `{"status": "OK", "id": "%v", "item_name": "%s", "expires": "%s"}`, id, newItemRequest.Name, newItemRequest.ExpirationDate)
 	}
 
 	router := http.NewServeMux()

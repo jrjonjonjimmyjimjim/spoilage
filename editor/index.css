@@ -25,3 +25,12 @@ h1 {
     padding: 0.5rem;
     background-color: #ccffcc;
 }
+
+div.existing-item-container {
+    border: 0.15rem solid #888888;
+    border-radius: 1em;
+    max-width: 60rem;
+    margin: auto;
+    padding: 0.5rem;
+    background-color: #ffffcc;
+}
