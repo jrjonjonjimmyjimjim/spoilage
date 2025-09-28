@@ -58,6 +58,51 @@ function _addExistingItemContainer({ item_id, item_name, expires }) {
     createdItemContainer.id = `existing-item-container-${item_id}`;
     const createdItemForm = createdItemContainer.children['existing-item-form-template'];
     createdItemForm.id = `existing-item-form-${item_id}`;
+    
+    createdItemForm.addEventListener('submit', (event) => {
+        event.preventDefault();
+
+        const formData = new FormData(createdItemForm);
+        const jsonData = Object.fromEntries(formData.entries());
+
+        fetch(`${DOMAIN_URL}/api/item`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(jsonData),
+        }).then((response) => {
+            if (!response.ok) {
+                throw new Error(`Error while fetching: ${response.status}`);
+            }
+            console.log('Success:', response);
+        }).catch((error) => {
+            console.error('Error submitting form:', error);
+        });
+    })
+
+    const createdItemFormRemoveButton = createdItemForm.children['remove-button'];
+    createdItemFormRemoveButton.onclick = (event) => {
+        fetch(`${DOMAIN_URL}/api/item`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ item_id: `${item_id}` }),
+        }).then((response) => {
+            if (!response.ok) {
+                throw new Error(`Error while fetching: ${response.status}`);
+            }
+            console.log('Success:', response);
+
+            createdItemContainer.remove();
+        }).catch((error) => {
+            console.error('Error submitting form:', error);
+        });
+    };
+
+    const createdItemFormItemId = createdItemForm.children['item_id'];
+    createdItemFormItemId.setAttribute('value', `${item_id}`);
     const createdItemFormItemName = createdItemForm.children['item_name'];
     createdItemFormItemName.setAttribute('value', `${item_name}`);
     const createdItemFormExpires = createdItemForm.children['expires'];

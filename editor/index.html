@@ -23,6 +23,8 @@
             <div style="display: none">
                 <div id="existing-item-container-template" class="existing-item-container">
                     <form id="existing-item-form-template">
+                        <input style="display:none" type="text" id="item_id" name="item_id" />
+
                         <label for="item_name">Item</label>
                         <input type="text" id="item_name" name="item_name" size="18" autofocus />
 
@@ -30,6 +32,7 @@
                         <input type="date" id="expires" name="expires" />
 
                         <button type="submit">Save</button>
+                        <button type="button" id="remove-button">Remove</button>
                     </form>
                 </div>
             </div>

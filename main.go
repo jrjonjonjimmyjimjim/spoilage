@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strconv"
 
 	"github.com/jrjonjonjimmyjimjim/spoilage-server/middleware"
 	_ "modernc.org/sqlite"
@@ -18,9 +19,7 @@ func main() {
 	fmt.Println("Hello world!")
 	var err error
 	db, err = sql.Open("sqlite", "database.db")
-	if err != nil {
-		log.Fatal(err)
-	}
+	panicIfErr(err)
 	defer db.Close()
 
 	createTableStatement, err := db.Prepare(`
@@ -30,13 +29,9 @@ func main() {
 			expiration_date string
 		)
 	`)
-	if err != nil {
-		log.Fatal(err)
-	}
+	panicIfErr(err)
 	_, err = createTableStatement.Exec()
-	if err != nil {
-		log.Fatal(err)
-	}
+	panicIfErr(err)
 	createTableStatement.Close()
 
 	catchAllHandler := func(w http.ResponseWriter, r *http.Request) {
@@ -53,7 +48,7 @@ func main() {
 		}
 		var existingItemResponses []ExistingItemResponse
 
-		itemRows, err := db.Query("SELECT key, name, expiration_date FROM items")
+		itemRows, err := db.Query("SELECT key, name, expiration_date FROM items ORDER BY expiration_date")
 		panicIfErr(err)
 		defer itemRows.Close()
 
@@ -73,10 +68,9 @@ func main() {
 
 	postApiItemHandler := func(w http.ResponseWriter, r *http.Request) {
 		requestBody, err := io.ReadAll(r.Body)
-		if err != nil {
-			log.Fatal(err)
-		}
+		panicIfErr(err)
 		fmt.Printf("What we got from the request body: %s", requestBody)
+
 		requestBodyBytes := []byte(requestBody)
 		type NewItemRequest struct {
 			Name           string `json:"item_name"`
@@ -84,30 +78,79 @@ func main() {
 		}
 		var newItemRequest NewItemRequest
 		err = json.Unmarshal(requestBodyBytes, &newItemRequest)
-		if err != nil {
-			log.Fatal(err)
-		}
+		panicIfErr(err)
+
 		addItemStatement, err := db.Prepare("INSERT INTO items (name, expiration_date) VALUES (?, ?)")
-		if err != nil {
-			log.Fatal(err)
-		}
+		panicIfErr(err)
 		defer addItemStatement.Close()
+
 		addItemResult, err := addItemStatement.Exec(newItemRequest.Name, newItemRequest.ExpirationDate)
-		if err != nil {
-			log.Fatal(err)
-		}
+		panicIfErr(err)
 
 		id, err := addItemResult.LastInsertId()
-		if err != nil {
-			log.Fatal(err)
-		}
+		panicIfErr(err)
+
 		fmt.Fprintf(w, `{"status": "OK", "item_id": "%v", "item_name": "%s", "expires": "%s"}`, id, newItemRequest.Name, newItemRequest.ExpirationDate)
+	}
+
+	putApiItemHandler := func(w http.ResponseWriter, r *http.Request) {
+		requestBody, err := io.ReadAll(r.Body)
+		panicIfErr(err)
+
+		fmt.Printf("What we got from the request body: %s", requestBody)
+		requestBodyBytes := []byte(requestBody)
+		type UpdateItemRequest struct {
+			Key            string `json:"item_id"`
+			Name           string `json:"item_name"`
+			ExpirationDate string `json:"expires"`
+		}
+		var updateItemRequest UpdateItemRequest
+		err = json.Unmarshal(requestBodyBytes, &updateItemRequest)
+		panicIfErr(err)
+
+		updateItemStatement, err := db.Prepare("UPDATE items SET name = ?, expiration_date = ? WHERE key = ?")
+		panicIfErr(err)
+		defer updateItemStatement.Close()
+
+		updateItemRequestKeyAsInt, err := strconv.Atoi(updateItemRequest.Key)
+		panicIfErr(err)
+		_, err = updateItemStatement.Exec(updateItemRequest.Name, updateItemRequest.ExpirationDate, updateItemRequestKeyAsInt)
+		panicIfErr(err)
+
+		fmt.Fprintf(w, `{"status": "OK", "item_id": "%v", "item_name": "%s", "expires": "%s"}`, updateItemRequestKeyAsInt, updateItemRequest.Name, updateItemRequest.ExpirationDate)
+	}
+
+	deleteApiItemHandler := func(w http.ResponseWriter, r *http.Request) {
+		requestBody, err := io.ReadAll(r.Body)
+		panicIfErr(err)
+
+		fmt.Printf("What we got from the request body: %s", requestBody)
+		requestBodyBytes := []byte(requestBody)
+		type DeleteItemRequest struct {
+			Key string `json:"item_id"`
+		}
+		var deleteItemRequest DeleteItemRequest
+		err = json.Unmarshal(requestBodyBytes, &deleteItemRequest)
+		panicIfErr(err)
+
+		deleteItemStatement, err := db.Prepare("DELETE FROM items WHERE key = ?")
+		panicIfErr(err)
+		defer deleteItemStatement.Close()
+
+		deleteItemRequestKeyAsInt, err := strconv.Atoi(deleteItemRequest.Key)
+		panicIfErr(err)
+		_, err = deleteItemStatement.Exec(deleteItemRequestKeyAsInt)
+		panicIfErr(err)
+
+		fmt.Fprintf(w, `{"status": "OK", "item_id": "%v"}`, deleteItemRequestKeyAsInt)
 	}
 
 	router := http.NewServeMux()
 	router.HandleFunc("/", catchAllHandler)
 	router.HandleFunc("GET /api/summary", getApiSummaryHandler)
 	router.HandleFunc("POST /api/item", postApiItemHandler)
+	router.HandleFunc("PUT /api/item", putApiItemHandler)
+	router.HandleFunc("DELETE /api/item", deleteApiItemHandler)
 
 	server := http.Server{
 		Addr:    ":8080",
