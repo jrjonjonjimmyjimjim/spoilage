@@ -43,7 +43,35 @@ func main() {
 		fmt.Fprintf(w, `{"status": "ERROR", "message": "Unsupported API Call"}`)
 	}
 
-	handler := func(w http.ResponseWriter, r *http.Request) {
+	getApiSummaryHandler := func(w http.ResponseWriter, r *http.Request) {
+		fmt.Println("Received request to list all items")
+
+		type ExistingItemResponse struct {
+			Key            int16  `json:"item_id"`
+			Name           string `json:"item_name"`
+			ExpirationDate string `json:"expires"`
+		}
+		var existingItemResponses []ExistingItemResponse
+
+		itemRows, err := db.Query("SELECT key, name, expiration_date FROM items")
+		panicIfErr(err)
+		defer itemRows.Close()
+
+		for itemRows.Next() {
+			var existingItemResponse ExistingItemResponse
+			err := itemRows.Scan(&existingItemResponse.Key, &existingItemResponse.Name, &existingItemResponse.ExpirationDate)
+			panicIfErr(err)
+			existingItemResponses = append(existingItemResponses, existingItemResponse)
+		}
+
+		var jsonResponse []byte
+		jsonResponse, err = json.Marshal(existingItemResponses)
+		panicIfErr(err)
+
+		fmt.Fprintf(w, "%s", string(jsonResponse))
+	}
+
+	postApiItemHandler := func(w http.ResponseWriter, r *http.Request) {
 		requestBody, err := io.ReadAll(r.Body)
 		if err != nil {
 			log.Fatal(err)
@@ -73,12 +101,13 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		fmt.Fprintf(w, `{"status": "OK", "id": "%v", "item_name": "%s", "expires": "%s"}`, id, newItemRequest.Name, newItemRequest.ExpirationDate)
+		fmt.Fprintf(w, `{"status": "OK", "item_id": "%v", "item_name": "%s", "expires": "%s"}`, id, newItemRequest.Name, newItemRequest.ExpirationDate)
 	}
 
 	router := http.NewServeMux()
 	router.HandleFunc("/", catchAllHandler)
-	router.HandleFunc("POST /api/item", handler)
+	router.HandleFunc("GET /api/summary", getApiSummaryHandler)
+	router.HandleFunc("POST /api/item", postApiItemHandler)
 
 	server := http.Server{
 		Addr:    ":8080",
@@ -86,5 +115,11 @@ func main() {
 	}
 	if err := server.ListenAndServe(); err != nil {
 		log.Fatal("ListenAndServe: ", err)
+	}
+}
+
+func panicIfErr(err error) {
+	if err != nil {
+		log.Fatal(err)
 	}
 }
