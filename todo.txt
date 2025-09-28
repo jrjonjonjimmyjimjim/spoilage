@@ -18,3 +18,4 @@ The server needs to handle 2 things: a web UI+backend through which you can prec
 This is NOT the Spoilage Client
 
 The client will be programmed on the Arduino and needs to be able to contact the Spoilage Server to both get expiring items and remove expired items.
+- STRETCH GOAL - If the client could add a "Leftovers" item with a 7 day expiration that would be nice
