@@ -34,8 +34,15 @@ func main() {
 	panicIfErr(err)
 	createTableStatement.Close()
 
+	fileServer := http.FileServer(http.Dir("./static"))
+	http.Handle("/static/", http.StripPrefix("/static/", fileServer))
+
 	catchAllHandler := func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, `{"status": "ERROR", "message": "Unsupported API Call"}`)
+		if r.URL.Path == "/" {
+			http.ServeFile(w, r, "./static/index.html")
+			return
+		}
+		fileServer.ServeHTTP(w, r)
 	}
 
 	getApiSummaryHandler := func(w http.ResponseWriter, r *http.Request) {
@@ -63,6 +70,7 @@ func main() {
 		jsonResponse, err = json.Marshal(existingItemResponses)
 		panicIfErr(err)
 
+		w.Header().Set("Content-Type", "application/json")
 		fmt.Fprintf(w, "%s", string(jsonResponse))
 	}
 
@@ -90,6 +98,7 @@ func main() {
 		id, err := addItemResult.LastInsertId()
 		panicIfErr(err)
 
+		w.Header().Set("Content-Type", "application/json")
 		fmt.Fprintf(w, `{"status": "OK", "item_id": "%v", "item_name": "%s", "expires": "%s"}`, id, newItemRequest.Name, newItemRequest.ExpirationDate)
 	}
 
@@ -117,6 +126,7 @@ func main() {
 		_, err = updateItemStatement.Exec(updateItemRequest.Name, updateItemRequest.ExpirationDate, updateItemRequestKeyAsInt)
 		panicIfErr(err)
 
+		w.Header().Set("Content-Type", "application/json")
 		fmt.Fprintf(w, `{"status": "OK", "item_id": "%v", "item_name": "%s", "expires": "%s"}`, updateItemRequestKeyAsInt, updateItemRequest.Name, updateItemRequest.ExpirationDate)
 	}
 
@@ -142,6 +152,7 @@ func main() {
 		_, err = deleteItemStatement.Exec(deleteItemRequestKeyAsInt)
 		panicIfErr(err)
 
+		w.Header().Set("Content-Type", "application/json")
 		fmt.Fprintf(w, `{"status": "OK", "item_id": "%v"}`, deleteItemRequestKeyAsInt)
 	}
 
@@ -151,6 +162,13 @@ func main() {
 	router.HandleFunc("POST /api/item", postApiItemHandler)
 	router.HandleFunc("PUT /api/item", putApiItemHandler)
 	router.HandleFunc("DELETE /api/item", deleteApiItemHandler)
+
+	getApiAuthHandler := func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("WWW-Authenticate", `Basic realm="User Visible Realm"`)
+		w.WriteHeader(http.StatusUnauthorized)
+		fmt.Fprintf(w, `{"status": "Unauthorized"}`)
+	}
+	router.HandleFunc("GET /api/auth", getApiAuthHandler)
 
 	server := http.Server{
 		Addr:    ":8080",

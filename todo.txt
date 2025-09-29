@@ -19,3 +19,4 @@ This is NOT the Spoilage Client
 
 The client will be programmed on the Arduino and needs to be able to contact the Spoilage Server to both get expiring items and remove expired items.
 - STRETCH GOAL - If the client could add a "Leftovers" item with a 7 day expiration that would be nice
+- STRETCH GOAL - Reminders; it could remind you to clean out the fridge every Monday and remind you to clean out the freezer once every 2 months
