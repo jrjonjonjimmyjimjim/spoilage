@@ -12,11 +12,17 @@ The server needs to handle 2 things: a web UI+backend through which you can prec
     - /api/item PUT - Given an item ID, update name and exp date
     - /api/item DELETE - Delete an item based on its id
 
+Critical next steps before work on client can begin:
+- Get basic auth working
+- Get server returning days till expiration alongside the expiration date
+- Get HTTPS working
+- Deploy the server to budgeting.robel.dev (cause that should be easiest)
 
 
 
-This is NOT the Spoilage Client
+This repo will also handle the Spoilage Client
 
 The client will be programmed on the Arduino and needs to be able to contact the Spoilage Server to both get expiring items and remove expired items.
+- Alongside the ability to delete expired items from the Arduino, a "snooze" feature would be nice. Like snooze for 3, 7, or 28 days.
 - STRETCH GOAL - If the client could add a "Leftovers" item with a 7 day expiration that would be nice
 - STRETCH GOAL - Reminders; it could remind you to clean out the fridge every Monday and remind you to clean out the freezer once every 2 months
