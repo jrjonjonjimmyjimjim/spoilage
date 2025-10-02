@@ -2,11 +2,13 @@ package main
 
 import (
 	"database/sql"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 
 	"github.com/jrjonjonjimmyjimjim/spoilage-server/middleware"
@@ -22,12 +24,13 @@ func main() {
 	panicIfErr(err)
 	defer db.Close()
 
+	initializeUsers()
 	createTableStatement, err := db.Prepare(`
 		CREATE TABLE IF NOT EXISTS items (
 			key INTEGER PRIMARY KEY,
 			name string,
 			expiration_date string
-		)
+		);
 	`)
 	panicIfErr(err)
 	_, err = createTableStatement.Exec()
@@ -183,4 +186,54 @@ func panicIfErr(err error) {
 	if err != nil {
 		log.Fatal(err)
 	}
+}
+
+func initializeUsers() {
+	dropTableStatement, err := db.Prepare(`
+		DROP TABLE IF EXISTS users;
+	`)
+	panicIfErr(err)
+	_, err = dropTableStatement.Exec()
+	panicIfErr(err)
+	dropTableStatement.Close()
+
+	createTableStatement, err := db.Prepare(`
+		CREATE TABLE users (
+			user string,
+			hash string
+		);
+	`)
+	panicIfErr(err)
+	_, err = createTableStatement.Exec()
+	panicIfErr(err)
+	createTableStatement.Close()
+
+	type UserLogin struct {
+		User     string
+		Password string
+		Hash     string
+	}
+	usersJson, err := os.ReadFile("users.json")
+	panicIfErr(err)
+
+	var logins []UserLogin
+	err = json.Unmarshal(usersJson, &logins)
+	panicIfErr(err)
+
+	for i, login := range logins {
+		userString := login.User + ":" + login.Password
+		userHash := base64.StdEncoding.EncodeToString([]byte(userString))
+		logins[i].Hash = userHash
+	}
+
+	addUserStatement, err := db.Prepare(`
+		INSERT INTO users (user, hash) VALUES (?, ?) 
+	`)
+	for _, login := range logins {
+		panicIfErr(err)
+
+		_, err := addUserStatement.Exec(login.User, login.Hash)
+		panicIfErr(err)
+	}
+	addUserStatement.Close()
 }
