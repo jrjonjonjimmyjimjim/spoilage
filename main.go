@@ -174,8 +174,11 @@ func main() {
 	router.HandleFunc("GET /api/auth", getApiAuthHandler)
 
 	server := http.Server{
-		Addr:    ":8080",
-		Handler: middleware.AllowCors(router),
+		Addr: ":8080",
+		Handler: middleware.BasicAuth(
+			middleware.AllowCors(router), // TODO: CORS may not be necessary once this is up and running
+			db,
+		),
 	}
 	if err := server.ListenAndServe(); err != nil {
 		log.Fatal("ListenAndServe: ", err)
