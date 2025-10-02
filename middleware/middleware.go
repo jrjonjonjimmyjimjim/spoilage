@@ -21,6 +21,7 @@ func AllowCors(next http.Handler) http.Handler {
 
 func BasicAuth(next http.Handler, db *sql.DB) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("WWW-Authenticate", `Basic realm="User Visible Realm"`)
 		auth := r.Header.Get("Authorization")
 		fmt.Printf("Authorization header: %s", auth)
 
@@ -30,10 +31,16 @@ func BasicAuth(next http.Handler, db *sql.DB) http.Handler {
 			rowResult := userRow.Scan()
 			if rowResult == sql.ErrNoRows {
 				fmt.Println("User-attempted authentication failure.")
+				w.WriteHeader(http.StatusUnauthorized)
+				fmt.Fprintf(w, `{"status": "Unauthorized"}`)
 			} else {
 				fmt.Println("User is authenticated!")
+				next.ServeHTTP(w, r)
 			}
+		} else {
+			fmt.Println("User-attempted authentication failure.")
+			w.WriteHeader(http.StatusUnauthorized)
+			fmt.Fprintf(w, `{"status": "Unauthorized"}`)
 		}
-		next.ServeHTTP(w, r)
 	})
 }

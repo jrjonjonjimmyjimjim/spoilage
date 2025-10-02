@@ -166,13 +166,6 @@ func main() {
 	router.HandleFunc("PUT /api/item", putApiItemHandler)
 	router.HandleFunc("DELETE /api/item", deleteApiItemHandler)
 
-	getApiAuthHandler := func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("WWW-Authenticate", `Basic realm="User Visible Realm"`)
-		w.WriteHeader(http.StatusUnauthorized)
-		fmt.Fprintf(w, `{"status": "Unauthorized"}`)
-	}
-	router.HandleFunc("GET /api/auth", getApiAuthHandler)
-
 	server := http.Server{
 		Addr: ":8080",
 		Handler: middleware.BasicAuth(
