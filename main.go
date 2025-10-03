@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/jrjonjonjimmyjimjim/spoilage-server/middleware"
 	_ "modernc.org/sqlite"
@@ -52,9 +53,10 @@ func main() {
 		fmt.Println("Received request to list all items")
 
 		type ExistingItemResponse struct {
-			Key            int16  `json:"item_id"`
-			Name           string `json:"item_name"`
-			ExpirationDate string `json:"expires"`
+			Key                int16  `json:"item_id"`
+			Name               string `json:"item_name"`
+			ExpirationDate     string `json:"expires"`
+			DaysTillExpiration int16  `json:"days_till_expiration"`
 		}
 		var existingItemResponses []ExistingItemResponse
 
@@ -62,10 +64,17 @@ func main() {
 		panicIfErr(err)
 		defer itemRows.Close()
 
+		currentTime := time.Now()
 		for itemRows.Next() {
 			var existingItemResponse ExistingItemResponse
 			err := itemRows.Scan(&existingItemResponse.Key, &existingItemResponse.Name, &existingItemResponse.ExpirationDate)
 			panicIfErr(err)
+			expirationTime, err := time.Parse("2006-01-02", existingItemResponse.ExpirationDate)
+			panicIfErr(err)
+
+			timeTillExpiration := expirationTime.Sub(currentTime)
+			daysTillExpiration := int16(timeTillExpiration.Hours() / 24.0)
+			existingItemResponse.DaysTillExpiration = daysTillExpiration
 			existingItemResponses = append(existingItemResponses, existingItemResponse)
 		}
 
