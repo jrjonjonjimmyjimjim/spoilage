@@ -3,3 +3,6 @@ database.db
 spoilage-server
 tls.json
 users.json
+
+spoilage-client/arduino_secrets.h
+
