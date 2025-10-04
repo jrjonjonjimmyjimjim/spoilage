@@ -45,7 +45,19 @@ void setup() {
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
+  // For first iteration:
+
+  // PRINT SPLASH SCREEN
+  // summary:
+  // MAKE REQUEST TO /api/summary AND STORE THE INFO
+
+  // PRINT FIRST 4 ITEMS IN THE LIST
+
+  // START TIMER FOR 30 SECONDS
+
+  // AFTER 30 SECONDS, TURN OFF THE DISPLAY AND LISTEN TO ACCELEROMETER INPUT
+
+  // ON ACCELEROMETER INPUT, PRINT MESSAGE ABOUT FETCHING ITEMS AND JUMP TO summary
   read_response();
 
   if (!client.connected()) {
@@ -56,6 +68,8 @@ void loop() {
   }
 }
 
+// TODO: This should be adapted to return a variable length string of the response body.
+// It should also take in the "GET /api/summary" part of the request and handle making the connection.
 void read_response() {
 /* -------------------------------------------------------------------------- */
   uint32_t received_data_num = 0;
