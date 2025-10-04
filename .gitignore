@@ -1,4 +1,5 @@
 .DS_Store
 database.db
+spoilage-server
 tls.json
 users.json
