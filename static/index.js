@@ -1,6 +1,6 @@
 'use strict';
 
-const DOMAIN_URL = 'http://localhost:8443';
+const DOMAIN_URL = 'https://budgeting.robel.dev:8443';
 
 window.onload = () => {
     fetch(`${DOMAIN_URL}/api/summary`, {
