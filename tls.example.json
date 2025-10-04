@@ -1,0 +1,4 @@
+{
+    "cert": "/etc/letsencrypt/live/***/fullchain.pem",
+    "key": "/etc/letsencrypt/live/***/privkey.pem"
+}

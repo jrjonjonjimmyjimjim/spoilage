@@ -176,14 +176,23 @@ func main() {
 	router.HandleFunc("DELETE /api/item", deleteApiItemHandler)
 
 	server := http.Server{
-		Addr: ":8080",
+		Addr: ":8443",
 		Handler: middleware.BasicAuth(
 			middleware.AllowCors(router), // TODO: CORS may not be necessary once this is up and running
 			db,
 		),
 	}
-	if err := server.ListenAndServe(); err != nil {
-		log.Fatal("ListenAndServe: ", err)
+	certPath, keyPath := getTlsCertAndKeyPaths()
+	if certPath == "" || keyPath == "" {
+		fmt.Println("Starting HTTP server (TLS OFF)")
+		if err := server.ListenAndServe(); err != nil {
+			log.Fatal("ListenAndServe: ", err)
+		}
+	} else {
+		fmt.Println("Starting HTTPS server (TLS ON)")
+		if err := server.ListenAndServeTLS(certPath, keyPath); err != nil {
+			log.Fatal("ListenAndServeTLS: ", err)
+		}
 	}
 }
 
@@ -241,4 +250,24 @@ func initializeUsers() {
 		panicIfErr(err)
 	}
 	addUserStatement.Close()
+}
+
+func getTlsCertAndKeyPaths() (certPath string, keyPath string) {
+	type TlsCertAndKeyPaths struct {
+		Cert string `json:"cert"`
+		Key  string `json:"key"`
+	}
+	tlsCertAndKeyPathsJson, err := os.ReadFile("tls.json")
+	if err != nil {
+		fmt.Println("Error while opening tls.json")
+		return "", ""
+	}
+	var tlsCertAndKeyPaths TlsCertAndKeyPaths
+	err = json.Unmarshal(tlsCertAndKeyPathsJson, &tlsCertAndKeyPaths)
+	if err != nil {
+		fmt.Println("Error while parsing tls.json")
+		return "", ""
+	}
+
+	return tlsCertAndKeyPaths.Cert, tlsCertAndKeyPaths.Key
 }

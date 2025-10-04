@@ -1,6 +1,6 @@
 'use strict';
 
-const DOMAIN_URL = 'http://localhost:8080';
+const DOMAIN_URL = 'http://localhost:8443';
 
 window.onload = () => {
     fetch(`${DOMAIN_URL}/api/summary`, {
