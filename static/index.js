@@ -15,7 +15,8 @@ window.onload = () => {
         console.log('Success:', response);
         return response.json();
     }).then((data) => {
-        for (const item of data) {
+        const items = data.items;
+        for (const item of items) {
             _addExistingItemContainer({ item_id: item.item_id, item_name: item.item_name, expires: item.expires });
         }
         const initializingText = document.getElementById('initializing-text');

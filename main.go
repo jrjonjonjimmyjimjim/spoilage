@@ -58,6 +58,9 @@ func main() {
 			ExpirationDate     string `json:"expires"`
 			DaysTillExpiration int16  `json:"days_till_expiration"`
 		}
+		type SummaryResponse struct {
+			Items []ExistingItemResponse `json:"items"`
+		}
 		var existingItemResponses []ExistingItemResponse
 
 		itemRows, err := db.Query("SELECT key, name, expiration_date FROM items ORDER BY expiration_date")
@@ -77,9 +80,12 @@ func main() {
 			existingItemResponse.DaysTillExpiration = daysTillExpiration
 			existingItemResponses = append(existingItemResponses, existingItemResponse)
 		}
+		summaryResponse := SummaryResponse{
+			Items: existingItemResponses,
+		}
 
 		var jsonResponse []byte
-		jsonResponse, err = json.Marshal(existingItemResponses)
+		jsonResponse, err = json.Marshal(summaryResponse)
 		panicIfErr(err)
 
 		w.Header().Set("Content-Type", "application/json")
