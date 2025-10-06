@@ -220,7 +220,7 @@ func initializeUsers() {
 	createTableStatement, err := db.Prepare(`
 		CREATE TABLE users (
 			user string,
-			hash string
+			encoding string
 		);
 	`)
 	panicIfErr(err)
@@ -231,7 +231,7 @@ func initializeUsers() {
 	type UserLogin struct {
 		User     string
 		Password string
-		Hash     string
+		Encoding string
 	}
 	usersJson, err := os.ReadFile("users.json")
 	panicIfErr(err)
@@ -242,17 +242,17 @@ func initializeUsers() {
 
 	for i, login := range logins {
 		userString := login.User + ":" + login.Password
-		userHash := base64.StdEncoding.EncodeToString([]byte(userString))
-		logins[i].Hash = userHash
+		userEncoding := base64.StdEncoding.EncodeToString([]byte(userString))
+		logins[i].Encoding = userEncoding
 	}
 
 	addUserStatement, err := db.Prepare(`
-		INSERT INTO users (user, hash) VALUES (?, ?) 
+		INSERT INTO users (user, encoding) VALUES (?, ?) 
 	`)
 	for _, login := range logins {
 		panicIfErr(err)
 
-		_, err := addUserStatement.Exec(login.User, login.Hash)
+		_, err := addUserStatement.Exec(login.User, login.Encoding)
 		panicIfErr(err)
 	}
 	addUserStatement.Close()

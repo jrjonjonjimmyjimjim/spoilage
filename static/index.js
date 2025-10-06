@@ -1,9 +1,7 @@
 'use strict';
 
-const DOMAIN_URL = 'http://localhost:8443';
-
 window.onload = () => {
-    fetch(`${DOMAIN_URL}/api/summary`, {
+    fetch(`/api/summary`, {
         method: 'GET',
         headers: {
             'Content-Type': 'application/json',
@@ -16,8 +14,10 @@ window.onload = () => {
         return response.json();
     }).then((data) => {
         const items = data.items;
-        for (const item of items) {
-            _addExistingItemContainer({ item_id: item.item_id, item_name: item.item_name, expires: item.expires });
+        if (items) {
+            for (const item of items) {
+                _addExistingItemContainer({ item_id: item.item_id, item_name: item.item_name, expires: item.expires });
+            }
         }
         const initializingText = document.getElementById('initializing-text');
         initializingText.textContent = 'Spoilage';
@@ -33,7 +33,7 @@ newItemForm.addEventListener('submit', (event) => {
     const formData = new FormData(newItemForm);
     const jsonData = Object.fromEntries(formData.entries());
     
-    fetch(`${DOMAIN_URL}/api/item`, {
+    fetch(`/api/item`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -66,7 +66,7 @@ function _addExistingItemContainer({ item_id, item_name, expires }) {
         const formData = new FormData(createdItemForm);
         const jsonData = Object.fromEntries(formData.entries());
 
-        fetch(`${DOMAIN_URL}/api/item`, {
+        fetch(`/api/item`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
@@ -84,7 +84,7 @@ function _addExistingItemContainer({ item_id, item_name, expires }) {
 
     const createdItemFormRemoveButton = createdItemForm.children['remove-button'];
     createdItemFormRemoveButton.onclick = (event) => {
-        fetch(`${DOMAIN_URL}/api/item`, {
+        fetch(`/api/item`, {
             method: 'DELETE',
             headers: {
                 'Content-Type': 'application/json',
