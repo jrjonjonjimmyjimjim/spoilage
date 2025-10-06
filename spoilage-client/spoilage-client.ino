@@ -1,4 +1,5 @@
 #include <LiquidCrystal.h>
+#include <Modulino.h>
 #include <WiFiS3.h>
 #include <WiFiSSLClient.h>
 
@@ -11,6 +12,8 @@ char pass[] = SECRET_PASS;
 char server[] = "budgeting.robel.dev";
 const int serverPort = 8443;
 const int MAX_ITEM_COUNT = 32;
+const float ACCEL_WAKE_THRESHOLD = 0.2;
+const int SCREEN_TIMEOUT = 60000;
 
 typedef struct Item{
   int Id;
@@ -23,13 +26,24 @@ int wifiStatus = WL_IDLE_STATUS;
 const int rs = 12, en = 11, d4 = 5, d5 = 4, d6 = 3, d7 = 2;
 
 LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
+ModulinoButtons buttons;
+ModulinoMovement movement;
+float xAccelRef = 0.0, yAccelRef = 0.0, zAccelRef = 0.0;
+// float roll, pitch, yaw;
 WiFiSSLClient client;
+
+bool screenActive = false;
+int timeToSleep = 0;
 
 void setup() {
   Serial.begin(115200);
   while (!Serial) {
     ;
   }
+
+  Modulino.begin();
+  movement.begin();
+  buttons.begin();
 
   lcd.begin(20, 4);
   lcd.print("SPOILAGE v0.1.0");
@@ -38,11 +52,7 @@ void setup() {
   lcd.setCursor(9, 1);
   lcd.print(ssid);
   lcd.setCursor(0, 2);
-  lcd.print(server);
-  lcd.setCursor(0, 3);
-  lcd.print("Port: ");
-  lcd.setCursor(6, 3);
-  lcd.print(serverPort);
+  lcd.print("Connecting to Wi-Fi");
 
   pinMode(LED_BUILTIN, OUTPUT);
   pinMode(8, OUTPUT);
@@ -56,75 +66,92 @@ void setup() {
     Serial.println("ERROR: Could not connect to WiFi network");
     haltAsError();
   }
-
 }
 
 void loop() {
-  // For first iteration:
-
-  // PRINT SPLASH SCREEN
-  // summary:
-  // MAKE REQUEST TO /api/summary AND STORE THE INFO
-
-  // PRINT FIRST 4 ITEMS IN THE LIST
-
-  // START TIMER FOR 30 SECONDS
-
-  // AFTER 30 SECONDS, TURN OFF THE DISPLAY AND LISTEN TO ACCELEROMETER INPUT
-
-  // ON ACCELEROMETER INPUT, PRINT MESSAGE ABOUT FETCHING ITEMS AND JUMP TO summary
+  float xAccel, yAccel, zAccel;
   JsonDocument doc;
-  apiRequest("GET /api/summary", "", doc);
 
-  JsonArray items = doc["items"];
-  Serial.println(String(items[0]["item_name"]));
+  movement.update();
+  xAccel = movement.getX();
+  yAccel = movement.getY();
+  zAccel = movement.getZ();
+  if (!screenActive) {
+    if (abs(xAccel - xAccelRef) > ACCEL_WAKE_THRESHOLD || abs(yAccel - yAccelRef) > ACCEL_WAKE_THRESHOLD || abs(zAccel - zAccelRef) > ACCEL_WAKE_THRESHOLD || buttons.update()) {
+      buttons.setLeds(true, true, true);
+      digitalWrite(8, HIGH);
+      lcd.display();
+      screenActive = true;
+      timeToSleep = millis() + SCREEN_TIMEOUT;
+      
+      apiRequest("GET /api/summary", "", doc);
+      JsonArray items = doc["items"];
 
-  int itemIndex = 0;
-  for (JsonVariant item : items) {
-    itemsList[itemIndex].Id = item["item_id"];
-    itemsList[itemIndex].Name = String(item["item_name"]);
-    itemsList[itemIndex].DaysLeft = item["days_till_expiration"];
-    Serial.println("Adding entry to itemsList");
-    Serial.println(itemsList[itemIndex].Id);
-    Serial.println(itemsList[itemIndex].Name);
-    Serial.println(itemsList[itemIndex].DaysLeft);
+      int itemIndex = 0;
+      for (JsonVariant item : items) {
+        itemsList[itemIndex].Id = item["item_id"];
+        itemsList[itemIndex].Name = String(item["item_name"]);
+        itemsList[itemIndex].DaysLeft = item["days_till_expiration"];
 
-    if (++itemIndex >= MAX_ITEM_COUNT) {
-      Serial.println("Received more item entries than could fit.");
-      break;
+        if (++itemIndex >= MAX_ITEM_COUNT) {
+          Serial.println("Received more item entries than could fit.");
+          break;
+        }
+      }
+      // Overwrite the Id of any remaining entries in the array
+      for (int i = itemIndex; i < MAX_ITEM_COUNT; i++) {
+        itemsList[itemIndex].Id = 0;
+      }
+
+      lcd.clear();
+      for (int i = 0; i < 4; i++) {
+        if (itemsList[i].Id == 0) {
+          break;
+        }
+        lcd.setCursor(0, i);
+        lcd.write(itemsList[i].Name.c_str());
+        String daysLeftString = String(itemsList[i].DaysLeft);
+        lcd.setCursor(19-daysLeftString.length()-1, i);
+        lcd.write(" ");
+        lcd.setCursor(19-daysLeftString.length(), i);
+        lcd.write(daysLeftString.c_str());
+        lcd.setCursor(19, i);
+        lcd.write("d");
+      }
+    }
+  } else { // Screen is ON
+    if (abs(xAccel - xAccelRef) > ACCEL_WAKE_THRESHOLD || abs(yAccel - yAccelRef) > ACCEL_WAKE_THRESHOLD || abs(zAccel - zAccelRef) > ACCEL_WAKE_THRESHOLD || buttons.update()) {
+      timeToSleep = millis() + SCREEN_TIMEOUT;
+      xAccelRef = xAccel;
+      yAccelRef = yAccel;
+      zAccelRef = zAccel;
+      Serial.print("Setting reference acceleration: (");
+      Serial.print(String(xAccelRef));
+      Serial.print(", ");
+      Serial.print(String(yAccelRef));
+      Serial.print(", ");
+      Serial.print(String(zAccelRef));
+      Serial.println(")");
+    }
+    if (millis() > timeToSleep) {
+      buttons.setLeds(false, false, false);
+      digitalWrite(8, LOW);
+      lcd.noDisplay();
+      screenActive = false;
+
+      xAccelRef = xAccel;
+      yAccelRef = yAccel;
+      zAccelRef = zAccel;
+      Serial.print("Setting reference acceleration: (");
+      Serial.print(String(xAccelRef));
+      Serial.print(", ");
+      Serial.print(String(yAccelRef));
+      Serial.print(", ");
+      Serial.print(String(zAccelRef));
+      Serial.println(")");
     }
   }
-  // Overwrite the Id of any remaining entries in the array
-  for (int i = itemIndex; i < MAX_ITEM_COUNT; i++) {
-    itemsList[itemIndex].Id = 0;
-  }
-
-  lcd.clear();
-  for (int i = 0; i < 4; i++) {
-    if (itemsList[i].Id == 0) {
-      break;
-    }
-    lcd.setCursor(0, i);
-    lcd.write(itemsList[i].Name.c_str());
-    String daysLeftString = String(itemsList[i].DaysLeft);
-    Serial.println(itemsList[i].DaysLeft);
-    Serial.println(daysLeftString.length());
-    lcd.setCursor(19-daysLeftString.length()-1, i);
-    lcd.write(" ");
-    lcd.setCursor(19-daysLeftString.length(), i);
-    lcd.write(daysLeftString.c_str());
-    lcd.setCursor(19, i);
-    lcd.write("d");
-  }
-
-  for (;;) {}
-
-  if (!client.connected()) {
-    Serial.println("Disconnecting from server");
-    client.stop();
-
-    haltAsSuccess();
-  }
+  delay(200);
 }
 
 void apiRequest(char endpoint[], char body[], JsonDocument &doc) {
@@ -135,10 +162,7 @@ void apiRequest(char endpoint[], char body[], JsonDocument &doc) {
     digitalWrite(LED_BUILTIN, LOW);
     delay(500);
   }
-  Serial.print("\nCalling server: "); Serial.println(endpoint);
-  Serial.println(body);
   if (client.connect(server, serverPort)) {
-    Serial.println("Connected to server");
     client.print(endpoint); client.println(" HTTP/1.1");
     client.println("Host: budgeting.robel.dev");
     client.print("Authorization: Basic "); client.println(SECRET_AUTH);
