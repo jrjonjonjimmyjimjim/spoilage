@@ -184,7 +184,7 @@ func main() {
 	server := http.Server{
 		Addr: ":8443",
 		Handler: middleware.BasicAuth(
-			middleware.AllowCors(router), // TODO: CORS may not be necessary once this is up and running
+			router,
 			db,
 		),
 	}
