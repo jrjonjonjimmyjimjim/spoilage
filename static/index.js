@@ -16,7 +16,7 @@ window.onload = () => {
         const items = data.items;
         if (items) {
             for (const item of items) {
-                _addExistingItemContainer({ item_id: item.item_id, item_name: item.item_name, expires: item.expires });
+                _addExistingItemContainer({ item_id: item.item_id, item_name: item.item_name, expires: item.expires, insertAtTop: false });
             }
         }
         const initializingText = document.getElementById('initializing-text');
@@ -46,14 +46,15 @@ newItemForm.addEventListener('submit', (event) => {
         console.log('Success:', response);
         return response.json();
     }).then((data) => {
-        _addExistingItemContainer({ item_id: data.item_id, item_name: data.item_name, expires: data.expires });
+        _addExistingItemContainer({ item_id: data.item_id, item_name: data.item_name, expires: data.expires, insertAtTop: true });
+        newItemForm.reset();
     }).catch((error) => {
         console.error('Error submitting form:', error);
     });
 })
 
-function _addExistingItemContainer({ item_id, item_name, expires }) {
-    const mainContainer = document.getElementById('main-container');
+function _addExistingItemContainer({ item_id, item_name, expires, insertAtTop }) {
+    const existingItemCollection = document.getElementById('existing-item-collection');
     const createdItemContainerTemplate = document.getElementById('existing-item-container-template');
     const createdItemContainer = createdItemContainerTemplate.cloneNode(true);
     createdItemContainer.id = `existing-item-container-${item_id}`;
@@ -108,5 +109,14 @@ function _addExistingItemContainer({ item_id, item_name, expires }) {
     createdItemFormItemName.setAttribute('value', `${item_name}`);
     const createdItemFormExpires = createdItemForm.children['expires'];
     createdItemFormExpires.setAttribute('value', `${expires}`);
-    mainContainer.appendChild(createdItemContainer);
+    if (insertAtTop) {
+        if (existingItemCollection.children.length > 0) {
+            const firstExistingItemContainer = existingItemCollection.children[0];
+            existingItemCollection.insertBefore(createdItemContainer, firstExistingItemContainer);
+        } else {
+            existingItemCollection.appendChild(createdItemContainer);
+        }
+    } else {
+        existingItemCollection.appendChild(createdItemContainer);
+    }
 }
