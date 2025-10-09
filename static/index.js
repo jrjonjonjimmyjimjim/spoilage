@@ -48,13 +48,22 @@ newItemForm.addEventListener('submit', (event) => {
     }).then((data) => {
         _addExistingItemContainer({ item_id: data.item_id, item_name: data.item_name, expires: data.expires, insertAtTop: true });
         newItemForm.reset();
+        const newItemNameField = document.getElementById('new_item_name');
+        newItemNameField.focus();
     }).catch((error) => {
         console.error('Error submitting form:', error);
     });
 })
 
 function _addExistingItemContainer({ item_id, item_name, expires, insertAtTop }) {
-    const existingItemCollection = document.getElementById('existing-item-collection');
+    let itemCollection;
+    if (insertAtTop) {
+        itemCollection = document.getElementById('new-item-collection')
+        itemCollection.style.display = 'block';
+    } else {
+        itemCollection = document.getElementById('existing-item-collection');
+    }
+
     const createdItemContainerTemplate = document.getElementById('existing-item-container-template');
     const createdItemContainer = createdItemContainerTemplate.cloneNode(true);
     createdItemContainer.id = `existing-item-container-${item_id}`;
@@ -110,13 +119,13 @@ function _addExistingItemContainer({ item_id, item_name, expires, insertAtTop })
     const createdItemFormExpires = createdItemForm.children['expires'];
     createdItemFormExpires.setAttribute('value', `${expires}`);
     if (insertAtTop) {
-        if (existingItemCollection.children.length > 0) {
-            const firstExistingItemContainer = existingItemCollection.children[0];
-            existingItemCollection.insertBefore(createdItemContainer, firstExistingItemContainer);
+        if (itemCollection.children.length > 0) {
+            const firstExistingItemContainer = itemCollection.children[0];
+            itemCollection.insertBefore(createdItemContainer, firstExistingItemContainer);
         } else {
-            existingItemCollection.appendChild(createdItemContainer);
+            itemCollection.appendChild(createdItemContainer);
         }
     } else {
-        existingItemCollection.appendChild(createdItemContainer);
+        itemCollection.appendChild(createdItemContainer);
     }
 }

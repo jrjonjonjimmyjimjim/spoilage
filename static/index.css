@@ -26,6 +26,16 @@ h1 {
     background-color: #ccffcc;
 }
 
+#new-item-collection {
+    border: 0.15rem solid #888888;
+    border-radius: 1em;
+    max-width: 60rem;
+    margin: 1rem auto;
+    padding: 0.5rem;
+    background-color: #ccffcc;
+    display: none;
+}
+
 div.existing-item-container {
     border: 0.15rem solid #888888;
     border-radius: 1em;
