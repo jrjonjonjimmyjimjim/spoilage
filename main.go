@@ -201,7 +201,7 @@ func main() {
 	router.HandleFunc("DELETE /api/item", deleteApiItemHandler)
 
 	server := http.Server{
-		Addr: ":8443",
+		Addr: ":443",
 		Handler: middleware.BasicAuth(
 			router,
 			db,
