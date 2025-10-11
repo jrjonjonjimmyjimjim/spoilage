@@ -9,12 +9,12 @@
 
 char ssid[] = SECRET_SSID;
 char pass[] = SECRET_PASS;
-char server[] = "budgeting.robel.dev";
-const int serverPort = 8443;
+char server[] = "app.spoilage.xyz";
+const int serverPort = 443;
 const int MAX_ITEM_COUNT = 32;
 const int LCD_WIDTH = 20;
-const float ACCEL_WAKE_THRESHOLD = 0.2;
-const int SCREEN_TIMEOUT = 60000;
+const float ACCEL_WAKE_THRESHOLD = 0.05;
+const int SCREEN_TIMEOUT = 40000;
 
 typedef struct Item{
   int Id;
@@ -275,7 +275,7 @@ void apiRequest(const char endpoint[], const char body[], JsonDocument &doc) {
   }
   if (client.connect(server, serverPort)) {
     client.print(endpoint); client.println(" HTTP/1.1");
-    client.println("Host: budgeting.robel.dev");
+    client.println("Host: app.spoilage.xyz");
     client.print("Authorization: Basic "); client.println(SECRET_AUTH);
     int bodyLength = String(body).length();
     if (bodyLength > 0) {
