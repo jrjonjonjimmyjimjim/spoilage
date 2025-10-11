@@ -39,6 +39,8 @@ bool postponeMenuOpen = false;
 int timeToSleep = 0;
 int selectedItemIndex = 0;
 
+// ground pin 7, pin 13
+// deliver 5v to pin 10
 void setup() {
   Serial.begin(115200);
   while (!Serial) {
@@ -49,6 +51,14 @@ void setup() {
   movement.begin();
   buttons.begin();
 
+  pinMode(7, OUTPUT);
+  pinMode(10, OUTPUT);
+  pinMode(13, OUTPUT);
+  digitalWrite(7, LOW);
+  digitalWrite(10, HIGH);
+  digitalWrite(13, LOW);
+  delay(250);
+  analogWrite(6, 104); // LCD contrast
   lcd.begin(20, 4);
   lcd.print("SPOILAGE v0.1.0");
   lcd.setCursor(0, 1);
@@ -255,6 +265,7 @@ void refreshSummary(JsonDocument &doc) {
 }
 
 void apiRequest(const char endpoint[], const char body[], JsonDocument &doc) {
+  buttons.setLeds(false, false, false);
   while (client.connected()) {
     Serial.println("Waiting for previous connection to close");
     digitalWrite(LED_BUILTIN, HIGH);
@@ -295,6 +306,7 @@ void apiRequest(const char endpoint[], const char body[], JsonDocument &doc) {
   }
 
   client.stop();
+  buttons.setLeds(true, true, true);
 }
 
 void haltAsError() {
