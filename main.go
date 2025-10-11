@@ -130,11 +130,24 @@ func main() {
 			Key            string `json:"item_id"`
 			Name           string `json:"item_name"`
 			ExpirationDate string `json:"expires"`
+			PostponeDays   int16  `json:"postpone_by_days"`
 		}
 		var updateItemRequest UpdateItemRequest
 		err = json.Unmarshal(requestBodyBytes, &updateItemRequest)
 		panicIfErr(err)
 
+		if updateItemRequest.PostponeDays > 0 {
+			itemRow := db.QueryRow("SELECT expiration_date FROM items WHERE key = ?", updateItemRequest.Key)
+			var expirationDate string
+			err = itemRow.Scan(&expirationDate)
+			panicIfErr(err)
+
+			expirationTime, err := time.Parse("2006-01-02", expirationDate)
+			panicIfErr(err)
+
+			postponedExpirationTime := expirationTime.AddDate(0, 0, int(updateItemRequest.PostponeDays))
+			updateItemRequest.ExpirationDate = postponedExpirationTime.Format("2006-01-02")
+		}
 		updateItemStatement, err := db.Prepare("UPDATE items SET name = ?, expiration_date = ? WHERE key = ?")
 		panicIfErr(err)
 		defer updateItemStatement.Close()
