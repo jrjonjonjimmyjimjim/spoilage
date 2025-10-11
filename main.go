@@ -145,7 +145,13 @@ func main() {
 			expirationTime, err := time.Parse("2006-01-02", expirationDate)
 			panicIfErr(err)
 
-			postponedExpirationTime := expirationTime.AddDate(0, 0, int(updateItemRequest.PostponeDays))
+			var postponedExpirationTime time.Time
+			timeNow := time.Now()
+			if expirationTime.Compare(timeNow) == 1 {
+				postponedExpirationTime = expirationTime.AddDate(0, 0, int(updateItemRequest.PostponeDays))
+			} else {
+				postponedExpirationTime = timeNow.AddDate(0, 0, int(updateItemRequest.PostponeDays))
+			}
 			updateItemRequest.ExpirationDate = postponedExpirationTime.Format("2006-01-02")
 		}
 		updateItemStatement, err := db.Prepare("UPDATE items SET name = ?, expiration_date = ? WHERE key = ?")
