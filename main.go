@@ -137,9 +137,9 @@ func main() {
 		panicIfErr(err)
 
 		if updateItemRequest.PostponeDays > 0 {
-			itemRow := db.QueryRow("SELECT name, expiration_date FROM items WHERE key = ?", updateItemRequest.Name, updateItemRequest.Key)
+			itemRow := db.QueryRow("SELECT name, expiration_date FROM items WHERE key = ?", updateItemRequest.Key)
 			var expirationDate string
-			err = itemRow.Scan(&expirationDate)
+			err = itemRow.Scan(&updateItemRequest.Name, &expirationDate)
 			panicIfErr(err)
 
 			expirationTime, err := time.Parse("2006-01-02", expirationDate)
