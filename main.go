@@ -88,8 +88,10 @@ func main() {
 		jsonResponse, err = json.Marshal(summaryResponse)
 		panicIfErr(err)
 
+		stringResponse := string(jsonResponse)
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprintf(w, "%s", string(jsonResponse))
+		w.Header().Set("Content-Length", strconv.Itoa(len(stringResponse)))
+		fmt.Fprintf(w, "%s", stringResponse)
 	}
 
 	postApiItemHandler := func(w http.ResponseWriter, r *http.Request) {
