@@ -4,6 +4,7 @@
 #include <WiFiSSLClient.h>
 
 #include <ArduinoJson.h>
+#include <StreamUtils.h>
 
 #include "arduino_secrets.h"
 
@@ -11,9 +12,11 @@ char ssid[] = SECRET_SSID;
 char pass[] = SECRET_PASS;
 char server[] = "app.spoilage.xyz";
 const int serverPort = 443;
+const int MAX_CONNECTION_TRIES = 3;
 const int MAX_ITEM_COUNT = 32;
 const int LCD_WIDTH = 20;
-const float ACCEL_WAKE_THRESHOLD = 0.05;
+const float ACCEL_WAKE_THRESHOLD = 0.02;
+const int ACCEL_CONSEC_CHECKS = 2;
 const int SCREEN_TIMEOUT = 40000;
 
 typedef struct Item{
@@ -37,10 +40,9 @@ bool screenActive = false;
 bool contextMenuOpen = false;
 bool postponeMenuOpen = false;
 int timeToSleep = 0;
+int passedAccelChecks = 0;
 int selectedItemIndex = 0;
 
-// ground pin 7, pin 13
-// deliver 5v to pin 10
 void setup() {
   Serial.begin(115200);
   while (!Serial) {
@@ -60,12 +62,14 @@ void setup() {
   delay(250);
   analogWrite(6, 104); // LCD contrast
   lcd.begin(20, 4);
-  lcd.print("SPOILAGE v0.1.0");
+  lcd.print("------SPOILAGE------");
   lcd.setCursor(0, 1);
-  lcd.print("Network: ");
-  lcd.setCursor(9, 1);
-  lcd.print(ssid);
+  lcd.print("Arduino Client");
   lcd.setCursor(0, 2);
+  lcd.print("Network: ");
+  lcd.setCursor(9, 2);
+  lcd.print(ssid);
+  lcd.setCursor(0, 3);
   lcd.print("Connecting to Wi-Fi");
 
   pinMode(LED_BUILTIN, OUTPUT);
@@ -78,7 +82,7 @@ void setup() {
   delay(10000);
   if (wifiStatus != WL_CONNECTED) {
     Serial.println("ERROR: Could not connect to WiFi network");
-    haltAsError();
+    restartFromError();
   }
 }
 
@@ -92,17 +96,28 @@ void loop() {
   zAccel = movement.getZ();
   bool buttonStateChanged = buttons.update();
   if (!screenActive) {
-    if (abs(xAccel - xAccelRef) > ACCEL_WAKE_THRESHOLD || abs(yAccel - yAccelRef) > ACCEL_WAKE_THRESHOLD || abs(zAccel - zAccelRef) > ACCEL_WAKE_THRESHOLD || buttonStateChanged) {
+    if (abs(xAccel - xAccelRef) > ACCEL_WAKE_THRESHOLD || abs(yAccel - yAccelRef) > ACCEL_WAKE_THRESHOLD || abs(zAccel - zAccelRef) > ACCEL_WAKE_THRESHOLD) {
+      passedAccelChecks++;
+    } else {
+      passedAccelChecks = 0;
+    }
+    if (passedAccelChecks >= ACCEL_CONSEC_CHECKS || buttonStateChanged) {
       buttons.setLeds(true, true, true);
       digitalWrite(8, HIGH);
       lcd.display();
       screenActive = true;
       timeToSleep = millis() + SCREEN_TIMEOUT;
+      passedAccelChecks = 0;
       
       refreshSummary(doc);
     }
   } else { // Screen is ON
-    if (abs(xAccel - xAccelRef) > ACCEL_WAKE_THRESHOLD || abs(yAccel - yAccelRef) > ACCEL_WAKE_THRESHOLD || abs(zAccel - zAccelRef) > ACCEL_WAKE_THRESHOLD || buttonStateChanged) {
+    if (abs(xAccel - xAccelRef) > ACCEL_WAKE_THRESHOLD || abs(yAccel - yAccelRef) > ACCEL_WAKE_THRESHOLD || abs(zAccel - zAccelRef) > ACCEL_WAKE_THRESHOLD) {
+      passedAccelChecks++;
+    } else {
+      passedAccelChecks = 0;
+    }
+    if (passedAccelChecks >= ACCEL_CONSEC_CHECKS || buttonStateChanged) {
       timeToSleep = millis() + SCREEN_TIMEOUT;
       xAccelRef = xAccel;
       yAccelRef = yAccel;
@@ -114,6 +129,7 @@ void loop() {
       Serial.print(", ");
       Serial.print(String(zAccelRef));
       Serial.println(")");
+      passedAccelChecks = 0;
     }
     if (buttonStateChanged) {
       if (contextMenuOpen) {
@@ -197,9 +213,10 @@ void loop() {
       Serial.print(", ");
       Serial.print(String(zAccelRef));
       Serial.println(")");
+      passedAccelChecks = 0;
     }
   }
-  delay(200);
+  delay(100);
 }
 
 void displayScreenForItem(int index, char buttonHelpText[]) {
@@ -273,64 +290,69 @@ void apiRequest(const char endpoint[], const char body[], JsonDocument &doc) {
     digitalWrite(LED_BUILTIN, LOW);
     delay(500);
   }
-  if (client.connect(server, serverPort)) {
-    client.print(endpoint); client.println(" HTTP/1.1");
-    client.println("Host: app.spoilage.xyz");
-    client.print("Authorization: Basic "); client.println(SECRET_AUTH);
-    int bodyLength = String(body).length();
-    if (bodyLength > 0) {
-      client.println("Content-Type: application/json");
-      String contentLengthHeader = String("Content-Length: ");
-      contentLengthHeader.concat(bodyLength);
-      client.println(contentLengthHeader.c_str());
+  int connectionTries = 0;
+  while (connectionTries < MAX_CONNECTION_TRIES) {
+    if (client.connect(server, serverPort)) {
+      client.print(endpoint); client.println(" HTTP/1.1");
+      client.println("Host: app.spoilage.xyz");
+      client.print("Authorization: Basic "); client.println(SECRET_AUTH);
+      int bodyLength = String(body).length();
+      if (bodyLength > 0) {
+        client.println("Content-Type: application/json");
+        String contentLengthHeader = String("Content-Length: ");
+        contentLengthHeader.concat(bodyLength);
+        client.println(contentLengthHeader.c_str());
+      }
+      client.println("Connection: close");
+      client.println();
+      client.println(body);
+      client.println();
+      Serial.println("connection made");
+      break;
+    } else {
+      client.stop();
+      connectionTries++;
     }
-    client.println("Connection: close");
-    client.println();
-    client.println(body);
-    client.println();
-  } else {
-    Serial.println("ERROR: Could not connect to budgeting.robel.dev");
-    haltAsError();
+  }
+
+  if (connectionTries == MAX_CONNECTION_TRIES) {
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("ERR: Couldn't reach");
+    lcd.setCursor(0, 1);
+    lcd.print("Spoilage server.");
+    lcd.setCursor(0, 2);
+    lcd.print("Check server, then");
+    lcd.setCursor(0, 3);
+    lcd.print("press RESET");
+    for (;;) {}
   }
 
   char endOfHeaders[] = "\r\n\r\n";
   if (!client.find(endOfHeaders)) {
     Serial.println("Invalid response; no body found");
     client.stop();
-    haltAsError();
+    restartFromError();
   }
-  DeserializationError error = deserializeJson(doc, client);
+
+  ReadLoggingStream loggingStream(client, Serial);
+  DeserializationError error = deserializeJson(doc, loggingStream);
   if (error) {
     Serial.println("ERROR: Could not deserialize response from budgeting.robel.dev");
-    haltAsError();
+    Serial.println(error.c_str());
+    restartFromError();
   }
 
   client.stop();
   buttons.setLeds(true, true, true);
 }
 
-void haltAsError() {
-  lcd.clear();
-  digitalWrite(8, HIGH);
-  lcd.setCursor(0, 3);
-  lcd.print("ERROR, PROGRAM HALT");
-  for (;;) {
-    digitalWrite(LED_BUILTIN, HIGH);
-    delay(100);
-    digitalWrite(LED_BUILTIN, LOW);
-    delay(100);
-  }
-}
-
-void haltAsSuccess() {
-  lcd.clear();
-  digitalWrite(8, HIGH);
-  lcd.setCursor(0, 3);
-  lcd.print("DONE, PROGRAM HALT");
-  for (;;) {
-    digitalWrite(LED_BUILTIN, HIGH);
-    delay(1000);
-    digitalWrite(LED_BUILTIN, LOW);
-    delay(1000);
-  }
+void restartFromError() {
+  screenActive = false;
+  contextMenuOpen = false;
+  postponeMenuOpen = false;
+  timeToSleep = 0;
+  passedAccelChecks = 0;
+  selectedItemIndex = 0;
+  setup();
 }
