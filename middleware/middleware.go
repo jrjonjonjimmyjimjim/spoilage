@@ -17,7 +17,7 @@ func BasicAuth(next http.Handler, db *sql.DB) http.Handler {
 
 		authHeader := strings.Split(auth, " ")
 		if len(authHeader) == 2 && authHeader[0] == "Basic" {
-			userRow := db.QueryRow("SELECT user FROM users WHERE hash = ?", authHeader[1])
+			userRow := db.QueryRow("SELECT user FROM users WHERE encoding = ?", authHeader[1])
 			rowResult := userRow.Scan()
 			if rowResult == sql.ErrNoRows {
 				fmt.Println("User-attempted authentication failure.")
