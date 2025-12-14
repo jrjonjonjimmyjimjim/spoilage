@@ -276,12 +276,25 @@ void refreshSummary(JsonDocument &doc) {
     itemsList[itemIndex].Id = 0;
   }
 
-  const char* message = doc["arduino_message"];
-  int messageLength = String(message).length();
-  if (messageLength > 0) {
+  String message = String(doc["arduino_message"]);
+  
+  if (message.length() > 0) {
     lcd.clear();
-    lcd.setCursor(0, 0);
-    lcd.write(message);
+    int lastNewLineIndex = 0;
+    int lcdLine = 0;
+    while (lastNewLineIndex < message.length()) {
+      lcd.setCursor(0, lcdLine);
+      int newLineIndex = message.indexOf('\n', lastNewLineIndex);
+      if (newLineIndex == -1) {
+        lcd.write((message.substring(lastNewLineIndex)).c_str());
+        break;
+      } else {
+        lcd.write((message.substring(lastNewLineIndex, newLineIndex)).c_str());
+      }
+      lastNewLineIndex = newLineIndex + 1;
+      lcdLine++;
+    }
+    delay(5000);
   }
   
   selectedItemIndex = 0;
