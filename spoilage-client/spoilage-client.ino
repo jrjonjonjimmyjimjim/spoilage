@@ -276,7 +276,14 @@ void refreshSummary(JsonDocument &doc) {
     itemsList[itemIndex].Id = 0;
   }
 
-  // If trash day warning is true, display the warning with a separate timeout; after the timeout, do the code below.
+  const char* message = doc["arduino_message"];
+  int messageLength = String(message).length();
+  if (messageLength > 0) {
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.write(message);
+  }
+  
   selectedItemIndex = 0;
   displayScreenForItem(selectedItemIndex, "");
 }
@@ -354,5 +361,6 @@ void restartFromError() {
   timeToSleep = 0;
   passedAccelChecks = 0;
   selectedItemIndex = 0;
+  xAccelRef = 0.0, yAccelRef = 0.0, zAccelRef = 0.0;
   setup();
 }

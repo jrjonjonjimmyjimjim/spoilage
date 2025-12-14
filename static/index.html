@@ -7,6 +7,21 @@
     <body>
         <div id="main-container">
             <h1 id="initializing-text">Initializing Editor...</h1>
+            <div id="config-container">
+                <form id="config-form">
+                    <label for="trash_day">Trash Day</label>
+                    <select type="text" id="trash_day" name="trash_day">
+                        <option value="sunday">Sunday</option>
+                        <option value="monday">Monday</option>
+                        <option value="tuesday">Tuesday</option>
+                        <option value="wednesday">Wednesday</option>
+                        <option value="thursday">Thursday</option>
+                        <option value="friday">Friday</option>
+                        <option value="saturday">Saturday</option>
+                    </select>
+                    <button type="submit">Save Changes</button>
+                </form>
+            </div>
             <div id="new-item-container">
                 <h2>New Item</h2>
                 <form id="new-item-form">
@@ -38,9 +53,9 @@
 
                         <button type="submit">Save</button>
                         <button type="button" id="remove-button">Remove</button>
-                        <button type="button" id="add-3d-button">3d</button>
-                        <button type="button" id="add-7d-button">7d</button>
-                        <button type="button" id="add-28d-button">28d</button>
+                        <button type="button" id="set-3d-button">3d</button>
+                        <button type="button" id="set-7d-button">7d</button>
+                        <button type="button" id="set-28d-button">28d</button>
                     </form>
                 </div>
             </div>

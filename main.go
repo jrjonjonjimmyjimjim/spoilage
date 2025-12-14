@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/jrjonjonjimmyjimjim/spoilage-server/middleware"
@@ -59,7 +60,9 @@ func main() {
 			DaysTillExpiration int16  `json:"days_till_expiration"`
 		}
 		type SummaryResponse struct {
-			Items []ExistingItemResponse `json:"items"`
+			Items          []ExistingItemResponse `json:"items"`
+			TrashDay       string                 `json:"trash_day"`
+			ArduinoMessage string                 `json:"arduino_message"`
 		}
 		var existingItemResponses []ExistingItemResponse
 
@@ -80,8 +83,27 @@ func main() {
 			existingItemResponse.DaysTillExpiration = daysTillExpiration
 			existingItemResponses = append(existingItemResponses, existingItemResponse)
 		}
+
+		auth := r.Header.Get("Authorization")
+		authHeader := strings.Split(auth, " ")
+		userRow := db.QueryRow("SELECT trash_day FROM users WHERE encoding = ?", authHeader[1])
+		var trashDay string
+		err = userRow.Scan(&trashDay)
+		if err != nil {
+			// Ignore
+		}
+
+		tomorrowTime := currentTime.Add(time.Hour * 24)
+		tomorrowIsTrashDay := trashDay == strings.ToLower(tomorrowTime.Weekday().String())
+		var arduinoMessage string
+		if tomorrowIsTrashDay {
+			arduinoMessage = "Trash day is\ntomorrow!\nClean out anything\nthat's expiring!"
+		}
+
 		summaryResponse := SummaryResponse{
-			Items: existingItemResponses,
+			Items:          existingItemResponses,
+			TrashDay:       trashDay,
+			ArduinoMessage: arduinoMessage,
 		}
 
 		var jsonResponse []byte
@@ -195,12 +217,40 @@ func main() {
 		fmt.Fprintf(w, `{"status": "OK", "item_id": "%v"}`, deleteItemRequestKeyAsInt)
 	}
 
+	putApiConfigHandler := func(w http.ResponseWriter, r *http.Request) {
+		requestBody, err := io.ReadAll(r.Body)
+		panicIfErr(err)
+
+		fmt.Printf("What we got from the request body: %s", requestBody)
+		requestBodyBytes := []byte(requestBody)
+		type UpdateConfigRequest struct {
+			TrashDay string `json:"trash_day"`
+		}
+		var updateConfigRequest UpdateConfigRequest
+		err = json.Unmarshal(requestBodyBytes, &updateConfigRequest)
+		panicIfErr(err)
+
+		updateConfigStatement, err := db.Prepare("UPDATE users SET trash_day = ? WHERE encoding = ?")
+		panicIfErr(err)
+		defer updateConfigStatement.Close()
+
+		auth := r.Header.Get("Authorization")
+		authHeader := strings.Split(auth, " ")
+
+		_, err = updateConfigStatement.Exec(updateConfigRequest.TrashDay, authHeader[1])
+		panicIfErr(err)
+
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprintf(w, `{"status": "OK", "trash_day": "%s"}`, updateConfigRequest.TrashDay)
+	}
+
 	router := http.NewServeMux()
 	router.HandleFunc("/", catchAllHandler)
 	router.HandleFunc("GET /api/summary", getApiSummaryHandler)
 	router.HandleFunc("POST /api/item", postApiItemHandler)
 	router.HandleFunc("PUT /api/item", putApiItemHandler)
 	router.HandleFunc("DELETE /api/item", deleteApiItemHandler)
+	router.HandleFunc("PUT /api/config", putApiConfigHandler)
 
 	server := http.Server{
 		Addr: ":443",
@@ -241,7 +291,8 @@ func initializeUsers() {
 	createTableStatement, err := db.Prepare(`
 		CREATE TABLE users (
 			user string,
-			encoding string
+			encoding string,
+			trash_day string
 		);
 	`)
 	panicIfErr(err)
@@ -268,7 +319,7 @@ func initializeUsers() {
 	}
 
 	addUserStatement, err := db.Prepare(`
-		INSERT INTO users (user, encoding) VALUES (?, ?) 
+		INSERT INTO users (user, encoding, trash_day) VALUES (?, ?, 'sunday') 
 	`)
 	for _, login := range logins {
 		panicIfErr(err)

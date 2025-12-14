@@ -1,5 +1,6 @@
 'use strict';
 
+const configForm = document.getElementById('config-form');
 window.onload = () => {
     fetch(`/api/summary`, {
         method: 'GET',
@@ -19,12 +20,40 @@ window.onload = () => {
                 _addExistingItemContainer({ item_id: item.item_id, item_name: item.item_name, expires: item.expires, insertAtTop: false });
             }
         }
+        const trashDay = data.trash_day;
+        configForm.children['trash_day'].value = trashDay;
         const initializingText = document.getElementById('initializing-text');
         initializingText.textContent = 'Spoilage';
     }).catch((error) => {
         console.error('Error fetching items summary:', error);
     })
 }
+
+configForm.addEventListener('submit', (event) => {
+    event.preventDefault();
+    
+    const formData = new FormData(configForm);
+    const jsonData = Object.fromEntries(formData.entries());
+    
+    console.info('configForm jsonData', jsonData);
+    fetch(`/api/config`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(jsonData),
+    }).then((response) => {
+        if (!response.ok) {
+            throw new Error(`Error while fetching: ${response.status}`);
+        }
+        console.log('Success:', response);
+        return response.json();
+    }).then((data) => {
+        alert('Configuration saved.');
+    }).catch((error) => {
+        console.error('Error submitting form:', error);
+    });
+});
 
 const newItemForm = document.getElementById('new-item-form');
 newItemForm.addEventListener('submit', (event) => {
@@ -53,7 +82,25 @@ newItemForm.addEventListener('submit', (event) => {
     }).catch((error) => {
         console.error('Error submitting form:', error);
     });
-})
+});
+
+const newItemDaysButton3 = newItemForm.children['set-3d-button'];
+newItemDaysButton3.onclick = (event) => {
+    _setExpiresFromTodayForNewItemForm({ days: 3 });        
+}
+const newItemDaysButton7 = newItemForm.children['set-7d-button'];
+newItemDaysButton7.onclick = (event) => {
+    _setExpiresFromTodayForNewItemForm({ days: 7 });
+}
+const newItemDaysButton28 = newItemForm.children['set-28d-button'];
+newItemDaysButton28.onclick = (event) => {
+    _setExpiresFromTodayForNewItemForm({ days: 28 });
+}
+function _setExpiresFromTodayForNewItemForm({ days }) {
+    const offsetDate = new Date();
+    offsetDate.setDate(offsetDate.getDate() + days);
+    newItemForm.children['expires'].value = offsetDate.toISOString().split('T')[0];
+}
 
 function _addExistingItemContainer({ item_id, item_name, expires, insertAtTop }) {
     let itemCollection;
@@ -69,6 +116,24 @@ function _addExistingItemContainer({ item_id, item_name, expires, insertAtTop })
     createdItemContainer.id = `existing-item-container-${item_id}`;
     const createdItemForm = createdItemContainer.children['existing-item-form-template'];
     createdItemForm.id = `existing-item-form-${item_id}`;
+    
+    function _setExpiresFromToday({ days }) {
+        const offsetDate = new Date();
+        offsetDate.setDate(offsetDate.getDate() + days);
+        createdItemForm.children['expires'].value = offsetDate.toISOString().split('T')[0];
+    }
+    const daysButton3 = createdItemForm.children['set-3d-button'];
+    daysButton3.onclick = (event) => {
+        _setExpiresFromToday({ days: 3 });
+    }
+    const daysButton7 = createdItemForm.children['set-7d-button'];
+    daysButton7.onclick = (event) => {
+        _setExpiresFromToday({ days: 7 });
+    }
+    const daysButton28 = createdItemForm.children['set-28d-button'];
+    daysButton28.onclick = (event) => {
+        _setExpiresFromToday({ days: 28 });
+    }
     
     createdItemForm.addEventListener('submit', (event) => {
         event.preventDefault();

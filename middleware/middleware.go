@@ -17,10 +17,12 @@ func BasicAuth(next http.Handler, db *sql.DB) http.Handler {
 
 		authHeader := strings.Split(auth, " ")
 		if len(authHeader) == 2 && authHeader[0] == "Basic" {
-			userRow := db.QueryRow("SELECT user FROM users WHERE encoding = ?", authHeader[1])
-			rowResult := userRow.Scan()
-			if rowResult == sql.ErrNoRows {
+			userRow := db.QueryRow("SELECT COUNT(*) FROM users WHERE encoding = ?", authHeader[1])
+			var rowCount int16
+			rowResultErr := userRow.Scan(&rowCount)
+			if rowResultErr != nil {
 				fmt.Println("User-attempted authentication failure.")
+				fmt.Println(rowResultErr)
 				w.WriteHeader(http.StatusUnauthorized)
 				fmt.Fprintf(w, `{"status": "Unauthorized"}`)
 			} else {
