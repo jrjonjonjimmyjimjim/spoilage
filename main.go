@@ -31,7 +31,8 @@ func main() {
 		CREATE TABLE IF NOT EXISTS items (
 			key INTEGER PRIMARY KEY,
 			name string,
-			expiration_date string
+			expiration_date string,
+			postpone_count INTEGER DEFAULT 0
 		);
 	`)
 	panicIfErr(err)
@@ -58,6 +59,7 @@ func main() {
 			Name               string `json:"item_name"`
 			ExpirationDate     string `json:"expires"`
 			DaysTillExpiration int16  `json:"days_till_expiration"`
+			PostponeCount      int16  `json:"postpone_count"`
 		}
 		type SummaryResponse struct {
 			Items          []ExistingItemResponse `json:"items"`
@@ -66,14 +68,14 @@ func main() {
 		}
 		var existingItemResponses []ExistingItemResponse
 
-		itemRows, err := db.Query("SELECT key, name, expiration_date FROM items ORDER BY expiration_date")
+		itemRows, err := db.Query("SELECT key, name, expiration_date, postpone_count FROM items ORDER BY expiration_date")
 		panicIfErr(err)
 		defer itemRows.Close()
 
 		currentTime := time.Now()
 		for itemRows.Next() {
 			var existingItemResponse ExistingItemResponse
-			err := itemRows.Scan(&existingItemResponse.Key, &existingItemResponse.Name, &existingItemResponse.ExpirationDate)
+			err := itemRows.Scan(&existingItemResponse.Key, &existingItemResponse.Name, &existingItemResponse.ExpirationDate, &existingItemResponse.PostponeCount)
 			panicIfErr(err)
 			expirationTime, err := time.Parse("2006-01-02", existingItemResponse.ExpirationDate)
 			panicIfErr(err)
@@ -160,6 +162,9 @@ func main() {
 		err = json.Unmarshal(requestBodyBytes, &updateItemRequest)
 		panicIfErr(err)
 
+		updateItemRequestKeyAsInt, err := strconv.Atoi(updateItemRequest.Key)
+		panicIfErr(err)
+
 		if updateItemRequest.PostponeDays > 0 {
 			itemRow := db.QueryRow("SELECT name, expiration_date FROM items WHERE key = ?", updateItemRequest.Key)
 			var expirationDate string
@@ -177,13 +182,18 @@ func main() {
 				postponedExpirationTime = timeNow.AddDate(0, 0, int(updateItemRequest.PostponeDays))
 			}
 			updateItemRequest.ExpirationDate = postponedExpirationTime.Format("2006-01-02")
+
+			updateItemPostponeDaysStatement, err := db.Prepare("UPDATE items SET postpone_count = postpone_count + 1 WHERE key = ?")
+			panicIfErr(err)
+			defer updateItemPostponeDaysStatement.Close()
+
+			_, err = updateItemPostponeDaysStatement.Exec(updateItemRequestKeyAsInt)
+			panicIfErr(err)
 		}
 		updateItemStatement, err := db.Prepare("UPDATE items SET name = ?, expiration_date = ? WHERE key = ?")
 		panicIfErr(err)
 		defer updateItemStatement.Close()
 
-		updateItemRequestKeyAsInt, err := strconv.Atoi(updateItemRequest.Key)
-		panicIfErr(err)
 		_, err = updateItemStatement.Exec(updateItemRequest.Name, updateItemRequest.ExpirationDate, updateItemRequestKeyAsInt)
 		panicIfErr(err)
 

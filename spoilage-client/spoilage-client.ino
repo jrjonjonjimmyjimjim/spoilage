@@ -23,6 +23,7 @@ typedef struct Item{
   int Id;
   String Name;
   int DaysLeft;
+  int PostponeCount;
 };
 struct Item itemsList[MAX_ITEM_COUNT] = {};
 
@@ -235,6 +236,9 @@ void displayScreenForItem(int index, char buttonHelpText[]) {
     lcd.setCursor(1, screenIndex);
     lcd.write(itemsList[i].Name.c_str());
     String daysLeftString = String(itemsList[i].DaysLeft);
+    for (int j = 0; j < itemsList[i].PostponeCount; j++) {
+      daysLeftString.concat('!');
+    }
     lcd.setCursor(19-daysLeftString.length()-1, screenIndex);
     lcd.print(' ');
     lcd.setCursor(19-daysLeftString.length(), screenIndex);
@@ -265,6 +269,7 @@ void refreshSummary(JsonDocument &doc) {
     itemsList[itemIndex].Id = item["item_id"];
     itemsList[itemIndex].Name = String(item["item_name"]);
     itemsList[itemIndex].DaysLeft = item["days_till_expiration"];
+    itemsList[itemIndex].PostponeCount = item["postpone_count"];
 
     if (++itemIndex >= MAX_ITEM_COUNT) {
       Serial.println("Received more item entries than could fit.");
@@ -278,7 +283,7 @@ void refreshSummary(JsonDocument &doc) {
 
   String message = String(doc["arduino_message"]);
   
-  if (message.length() > 0) {
+  if (doc["arduino_message"] != NULL && message.length() > 0) {
     lcd.clear();
     int lastNewLineIndex = 0;
     int lcdLine = 0;
