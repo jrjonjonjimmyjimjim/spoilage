@@ -236,15 +236,15 @@ void displayScreenForItem(int index, char buttonHelpText[]) {
     lcd.setCursor(1, screenIndex);
     lcd.write(itemsList[i].Name.c_str());
     String daysLeftString = String(itemsList[i].DaysLeft);
+    daysLeftString.concat('d');
     for (int j = 0; j < itemsList[i].PostponeCount; j++) {
       daysLeftString.concat('!');
     }
-    lcd.setCursor(19-daysLeftString.length()-1, screenIndex);
+    
+    lcd.setCursor(20-daysLeftString.length()-1, screenIndex);
     lcd.print(' ');
-    lcd.setCursor(19-daysLeftString.length(), screenIndex);
+    lcd.setCursor(20-daysLeftString.length(), screenIndex);
     lcd.write(daysLeftString.c_str());
-    lcd.setCursor(19, screenIndex);
-    lcd.print('d');
   }
 
   String buttonHelpTextObj = String(buttonHelpText);
