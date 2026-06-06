@@ -1,0 +1,24 @@
+{
+	"name": "spoilage-frontend",
+	"version": "1.0.0",
+	"description": "Frontend for Spoilage, the personal grocery management system.",
+	"license": "ISC",
+	"author": "Jonathon Robel",
+	"type": "commonjs",
+	"main": "vite.config.js",
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1"
+	},
+	"dependencies": {
+		"@tanstack/react-query": "^5.101.0",
+		"lucide-react": "^1.17.0",
+		"react": "^19.2.7",
+		"react-dom": "^19.2.7"
+	},
+	"devDependencies": {
+		"@tailwindcss/vite": "^4.3.0",
+		"@vitejs/plugin-react-swc": "^4.3.1",
+		"tailwindcss": "^4.3.0",
+		"vite": "^8.0.16"
+	}
+}
