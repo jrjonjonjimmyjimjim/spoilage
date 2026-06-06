@@ -4,7 +4,6 @@ import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
 	plugins: [react(), tailwindcss()],
-	root: './frontend', // TODO: what is root doing here?
 	build: {
 		outDir: '../static',
 		emptyOutDir: true,
