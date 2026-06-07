@@ -153,16 +153,13 @@ func main() {
 		fmt.Printf("What we got from the request body: %s", requestBody)
 		requestBodyBytes := []byte(requestBody)
 		type UpdateItemRequest struct {
-			Key            string `json:"item_id"`
+			Key            int16 `json:"item_id"`
 			Name           string `json:"item_name"`
 			ExpirationDate string `json:"expires"`
 			PostponeDays   int16  `json:"postpone_by_days"`
 		}
 		var updateItemRequest UpdateItemRequest
 		err = json.Unmarshal(requestBodyBytes, &updateItemRequest)
-		panicIfErr(err)
-
-		updateItemRequestKeyAsInt, err := strconv.Atoi(updateItemRequest.Key)
 		panicIfErr(err)
 
 		if updateItemRequest.PostponeDays > 0 {
@@ -187,18 +184,18 @@ func main() {
 			panicIfErr(err)
 			defer updateItemPostponeDaysStatement.Close()
 
-			_, err = updateItemPostponeDaysStatement.Exec(updateItemRequestKeyAsInt)
+			_, err = updateItemPostponeDaysStatement.Exec(updateItemRequest.Key)
 			panicIfErr(err)
 		}
 		updateItemStatement, err := db.Prepare("UPDATE items SET name = ?, expiration_date = ? WHERE key = ?")
 		panicIfErr(err)
 		defer updateItemStatement.Close()
 
-		_, err = updateItemStatement.Exec(updateItemRequest.Name, updateItemRequest.ExpirationDate, updateItemRequestKeyAsInt)
+		_, err = updateItemStatement.Exec(updateItemRequest.Name, updateItemRequest.ExpirationDate, updateItemRequest.Key)
 		panicIfErr(err)
 
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprintf(w, `{"status": "OK", "item_id": "%v", "item_name": "%s", "expires": "%s"}`, updateItemRequestKeyAsInt, updateItemRequest.Name, updateItemRequest.ExpirationDate)
+		fmt.Fprintf(w, `{"status": "OK", "item_id": "%v", "item_name": "%s", "expires": "%s"}`, updateItemRequest.Key, updateItemRequest.Name, updateItemRequest.ExpirationDate)
 	}
 
 	deleteApiItemHandler := func(w http.ResponseWriter, r *http.Request) {
@@ -208,7 +205,7 @@ func main() {
 		fmt.Printf("What we got from the request body: %s", requestBody)
 		requestBodyBytes := []byte(requestBody)
 		type DeleteItemRequest struct {
-			Key string `json:"item_id"`
+			Key int16 `json:"item_id"`
 		}
 		var deleteItemRequest DeleteItemRequest
 		err = json.Unmarshal(requestBodyBytes, &deleteItemRequest)
@@ -218,13 +215,11 @@ func main() {
 		panicIfErr(err)
 		defer deleteItemStatement.Close()
 
-		deleteItemRequestKeyAsInt, err := strconv.Atoi(deleteItemRequest.Key)
-		panicIfErr(err)
-		_, err = deleteItemStatement.Exec(deleteItemRequestKeyAsInt)
+		_, err = deleteItemStatement.Exec(deleteItemRequest.Key)
 		panicIfErr(err)
 
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprintf(w, `{"status": "OK", "item_id": "%v"}`, deleteItemRequestKeyAsInt)
+		fmt.Fprintf(w, `{"status": "OK", "item_id": "%v"}`, deleteItemRequest.Key)
 	}
 
 	putApiConfigHandler := func(w http.ResponseWriter, r *http.Request) {
@@ -262,14 +257,18 @@ func main() {
 	router.HandleFunc("DELETE /api/item", deleteApiItemHandler)
 	router.HandleFunc("PUT /api/config", putApiConfigHandler)
 
+	certPath, keyPath := getTlsCertAndKeyPaths()
+	serverAddr := ":443"
+	if certPath == "" || keyPath == "" {
+		serverAddr = ":8080"
+	}
 	server := http.Server{
-		Addr: ":443",
+		Addr: serverAddr,
 		Handler: middleware.BasicAuth(
 			router,
 			db,
 		),
 	}
-	certPath, keyPath := getTlsCertAndKeyPaths()
 	if certPath == "" || keyPath == "" {
 		fmt.Println("Starting HTTP server (TLS OFF)")
 		if err := server.ListenAndServe(); err != nil {
