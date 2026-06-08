@@ -4,7 +4,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { X } from 'lucide-react';
 
-export default function ExpiredSectionItem({ item }) {
+export default function InventorySectionItem({ item }) {
 	const [expiresPostponeSelectValue, setExpiresPostponeSelectValue] = useState('NONE');
 	const queryClient = useQueryClient();
 
@@ -103,7 +103,7 @@ export default function ExpiredSectionItem({ item }) {
 				/>
 				<p
 					className='flex-none'
-					title={`This item expired ${expirationMessage}`}
+					title={`This item will expire ${expirationMessage}`}
 				>
 					{expirationMessage}
 				</p>
@@ -134,13 +134,14 @@ export default function ExpiredSectionItem({ item }) {
 				<select
 					id={`expires-postpone-select-${item.item_id}`}
 					className='flex-none bg-white/70 transition duration-100 ease-in-out hover:bg-blue-100 border rounded-sm pl-1'
-					title='Postpone: Select an option to set the expiration date that many days from today'
+					title='Postpone: Select an option to push back the expiration date that many days further'
 					value={expiresPostponeSelectValue}
 					onChange={(event) => {
 						const postponeAmount = event.target.value;
 						if (postponeAmount === 'NONE') return;
 
-						const offsetDate = new Date();
+						const [existingYear, existingMonth, existingDay] = _.split(item.expires, '-');
+						const offsetDate = new Date(existingYear, existingMonth - 1, existingDay);
 						offsetDate.setDate(offsetDate.getDate() + parseInt(postponeAmount));
 						mutationPut.mutate({
 							...item,
