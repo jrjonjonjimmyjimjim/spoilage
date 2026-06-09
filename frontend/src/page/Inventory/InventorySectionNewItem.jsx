@@ -2,7 +2,7 @@ import * as _ from 'lodash-es';
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
-import { Check } from 'lucide-react';
+import { Check, X } from 'lucide-react';
 
 export default function InventorySectionNewItem({ setNewItemFormOpen }) {
 	const [newItemName, setNewItemName] = useState('');
@@ -18,7 +18,6 @@ export default function InventorySectionNewItem({ setNewItemFormOpen }) {
 			body: JSON.stringify({ ...newItem }),
 		}),
 		onMutate: async (newItem) => {
-			setNewItemFormOpen(false);
 			await queryClient.cancelQueries({ queryKey: ['inventory'] });
 			const previousInventory = queryClient.getQueryData(['inventory']);
 			queryClient.setQueryData(['inventory'], (oldInventory) => ({
@@ -38,13 +37,18 @@ export default function InventorySectionNewItem({ setNewItemFormOpen }) {
 
 	return (
 		<>
-			<div className='flex flex-wrap gap-4 bg-green-400/30 p-1 rounded-md'>
+			<form className='flex flex-wrap gap-4 bg-green-400/30 p-1 rounded-md' onSubmit={(event) => {
+				event.preventDefault();
+				mutationPost.mutate({ item_name: newItemName, expires: newItemExpires });
+				setNewItemFormOpen(false);
+			}}>
 				<label htmlFor={`item-name-input-new`} className='sr-only'>
 					New item name
 				</label>
 				<input
 					id={`item-name-input-new`}
 					type='text'
+					required
 					className='flex-1 bg-white/70 transition duration-100 ease-in-out hover:bg-blue-100 border rounded-sm pl-1'
 					title='Click to set your new item&#39;s name'
 					value={newItemName}
@@ -58,7 +62,8 @@ export default function InventorySectionNewItem({ setNewItemFormOpen }) {
 				<input
 					id={`expires-input-new`}
 					type='date'
-					className='flex-none bg-white/70 transition duration-100 ease-in-out hover:bg-blue-100 border rounded-sm'
+					required
+					className={'flex-none bg-white/70 transition duration-100 ease-in-out hover:bg-blue-100 border rounded-sm'}
 					title='Click to set this item&#39;s expiration date'
 					value={newItemExpires}
 					onChange={(event) => {
@@ -68,10 +73,19 @@ export default function InventorySectionNewItem({ setNewItemFormOpen }) {
 				<button
 					className='bg-green-500 transition duration-100 ease-in-out hover:bg-green-600 border rounded-sm ml-auto'
 					title='Save this new item'
-					onClick={() => mutationPost.mutate({ item_name: newItemName, expires: newItemExpires })}>
+					type='submit'
+				>
 					<Check />
 				</button>
-			</div>
+				<button
+					className='bg-red-400 transition duration-100 ease-in-out hover:bg-red-600 border rounded-sm ml-auto'
+					title='Close new item form'
+					onClick={() => {
+						setNewItemFormOpen(false);
+					}}>
+					<X />
+				</button>
+			</form>
 		</>
 	);
 }
