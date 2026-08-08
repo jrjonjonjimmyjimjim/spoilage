@@ -139,7 +139,7 @@ void loop() {
             String requestBody = String("{\"item_id\":\"");
             requestBody.concat(itemsList[selectedItemIndex].Id);
             requestBody.concat("\",\"postpone_by_days\":3}");
-            apiRequest("PUT /api/item", requestBody.c_str(), doc);
+            apiRequest("PUT /api/inventory_item", requestBody.c_str(), doc);
 
             displayScreenForItem(selectedItemIndex, "");
             postponeMenuOpen = false;
@@ -149,7 +149,7 @@ void loop() {
             String requestBody = String("{\"item_id\":\"");
             requestBody.concat(itemsList[selectedItemIndex].Id);
             requestBody.concat("\",\"postpone_by_days\":7}");
-            apiRequest("PUT /api/item", requestBody.c_str(), doc);
+            apiRequest("PUT /api/inventory_item", requestBody.c_str(), doc);
 
             displayScreenForItem(selectedItemIndex, "");
             postponeMenuOpen = false;
@@ -159,7 +159,7 @@ void loop() {
             String requestBody = String("{\"item_id\":\"");
             requestBody.concat(itemsList[selectedItemIndex].Id);
             requestBody.concat("\",\"postpone_by_days\":28}");
-            apiRequest("PUT /api/item", requestBody.c_str(), doc);
+            apiRequest("PUT /api/inventory_item", requestBody.c_str(), doc);
 
             displayScreenForItem(selectedItemIndex, "");
             postponeMenuOpen = false;
@@ -174,7 +174,7 @@ void loop() {
             String requestBody = String("{\"item_id\":\"");
             requestBody.concat(itemsList[selectedItemIndex].Id);
             requestBody.concat("\"}");
-            apiRequest("DELETE /api/item", requestBody.c_str(), doc);
+            apiRequest("DELETE /api/inventory_item", requestBody.c_str(), doc);
 
             contextMenuOpen = false;
             refreshSummary(doc);

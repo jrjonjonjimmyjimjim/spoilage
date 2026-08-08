@@ -10,7 +10,7 @@ export default function InventorySectionNewItem({ setNewItemFormOpen }) {
 	const queryClient = useQueryClient();
 
 	const mutationPost = useMutation({
-		mutationFn: (newItem) => fetch('/api/item', {
+		mutationFn: (newItem) => fetch('/api/inventory_item', {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
@@ -18,20 +18,20 @@ export default function InventorySectionNewItem({ setNewItemFormOpen }) {
 			body: JSON.stringify({ ...newItem }),
 		}),
 		onMutate: async (newItem) => {
-			await queryClient.cancelQueries({ queryKey: ['inventory'] });
-			const previousInventory = queryClient.getQueryData(['inventory']);
-			queryClient.setQueryData(['inventory'], (oldInventory) => ({
+			await queryClient.cancelQueries({ queryKey: ['inventory_summary'] });
+			const previousInventory = queryClient.getQueryData(['inventory_summary']);
+			queryClient.setQueryData(['inventory_summary'], (oldInventory) => ({
 				...oldInventory,
 				items: [...oldInventory.items, newItem],
 			}));
 			return { previousInventory };
 		},
 		onError: (err, updatedItem, context) => {
-			queryClient.setQueryData(['inventory'], context.previousInventory);
+			queryClient.setQueryData(['inventory_summary'], context.previousInventory);
 			setNewItemFormOpen(true);
 		},
 		onSettled: () => {
-			queryClient.invalidateQueries({ queryKey: ['inventory'] });
+			queryClient.invalidateQueries({ queryKey: ['inventory_summary'] });
 		},
 	});
 

@@ -7,8 +7,8 @@ import { X } from 'lucide-react';
 
 export default function Inventory() {
 	const { data, isLoading, error } = useQuery({
-		queryKey: ['inventory'],
-		queryFn: () => fetch('/api/summary').then(res => res.json()),
+		queryKey: ['inventory_summary'],
+		queryFn: () => fetch('/api/inventory_summary').then(res => res.json()),
 	});
 	const items = _.get(data, 'items');
 
@@ -20,11 +20,11 @@ export default function Inventory() {
 
 	return (
 		<>
-			<div className="min-h-screen max-w-4xl m-auto p-2 bg-gray-200/80 border rounded-2xl">
+			<div className='min-h-screen max-w-4xl m-auto p-2 bg-gray-200/80 border rounded-2xl'>
 				{error &&
 					<div>
-						<X className="inline text-red-500" />
-						<p className="inline">
+						<X className='inline text-red-500' />
+						<p className='inline'>
 							You are offline. Changes may not sync properly.
 						</p>
 					</div>

@@ -9,7 +9,7 @@ export default function ExpiredSectionItem({ item }) {
 	const queryClient = useQueryClient();
 
 	const mutationPut = useMutation({
-		mutationFn: (updatedItem) => fetch('/api/item', {
+		mutationFn: (updatedItem) => fetch('/api/inventory_item', {
 			method: 'PUT',
 			headers: {
 				'Content-Type': 'application/json',
@@ -17,9 +17,9 @@ export default function ExpiredSectionItem({ item }) {
 			body: JSON.stringify({ ...updatedItem }),
 		}),
 		onMutate: async (updatedItem) => {
-			await queryClient.cancelQueries({ queryKey: ['inventory'] });
-			const previousInventory = queryClient.getQueryData(['inventory']);
-			queryClient.setQueryData(['inventory'], (oldInventory) => ({
+			await queryClient.cancelQueries({ queryKey: ['inventory_summary'] });
+			const previousInventory = queryClient.getQueryData(['inventory_summary']);
+			queryClient.setQueryData(['inventory_summary'], (oldInventory) => ({
 				...oldInventory,
 				items: _.map(oldInventory.items,
 					(oldItem) => oldItem.item_id === updatedItem.item_id ? { ...oldItem, item_name: updatedItem.item_name } : oldItem
@@ -28,15 +28,15 @@ export default function ExpiredSectionItem({ item }) {
 			return { previousInventory };
 		},
 		onError: (err, updatedItem, context) => {
-			queryClient.setQueryData(['inventory'], context.previousInventory);
+			queryClient.setQueryData(['inventory_summary'], context.previousInventory);
 		},
 		onSettled: () => {
-			queryClient.invalidateQueries({ queryKey: ['inventory'] });
+			queryClient.invalidateQueries({ queryKey: ['inventory_summary'] });
 		},
 	});
 
 	const mutationDelete = useMutation({
-		mutationFn: (itemToDelete) => fetch('/api/item', {
+		mutationFn: (itemToDelete) => fetch('/api/inventory_item', {
 			method: 'DELETE',
 			headers: {
 				'Content-Type': 'application/json',
@@ -44,19 +44,19 @@ export default function ExpiredSectionItem({ item }) {
 			body: JSON.stringify({ ...itemToDelete }),
 		}),
 		onMutate: async (itemToDelete) => {
-			await queryClient.cancelQueries({ queryKey: ['inventory'] });
-			const previousInventory = queryClient.getQueryData(['inventory']);
-			queryClient.setQueryData(['inventory'], (oldInventory) => ({
+			await queryClient.cancelQueries({ queryKey: ['inventory_summary'] });
+			const previousInventory = queryClient.getQueryData(['inventory_summary']);
+			queryClient.setQueryData(['inventory_summary'], (oldInventory) => ({
 				...oldInventory,
 				items: _.filter(oldInventory.items, (oldItem) => oldItem.item_id !== itemToDelete.item_id),
 			}));
 			return { previousInventory };
 		},
 		onError: (err, itemToDelete, context) => {
-			queryClient.setQueryData(['inventory'], context.previousInventory);
+			queryClient.setQueryData(['inventory_summary'], context.previousInventory);
 		},
 		onSettled: () => {
-			queryClient.invalidateQueries({ queryKey: ['inventory'] });
+			queryClient.invalidateQueries({ queryKey: ['inventory_summary'] });
 		},
 	});
 
