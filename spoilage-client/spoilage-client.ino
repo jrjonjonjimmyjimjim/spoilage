@@ -283,7 +283,7 @@ void refreshSummary(JsonDocument &doc) {
 
   String message = String(doc["arduino_message"]);
   
-  if (doc["arduino_message"] != NULL && message.length() > 0) {
+  if (message != "null" && message.length() > 0) {
     lcd.clear();
     int lastNewLineIndex = 0;
     int lcdLine = 0;
