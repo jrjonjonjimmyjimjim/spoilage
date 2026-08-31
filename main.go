@@ -57,7 +57,7 @@ func main() {
 		}
 		var existingItemResponses []ExistingItemResponse
 
-		itemRows, err := db.Query("SELECT key, name, expiration_date, postpone_count FROM items ORDER BY expiration_date")
+		itemRows, err := db.Query("SELECT key, name, expiration_date, postpone_count FROM inventory_items ORDER BY expiration_date")
 		panicIfErr(err)
 		defer itemRows.Close()
 
@@ -121,7 +121,7 @@ func main() {
 		err = json.Unmarshal(requestBodyBytes, &newItemRequest)
 		panicIfErr(err)
 
-		addItemStatement, err := db.Prepare("INSERT INTO items (name, expiration_date) VALUES (?, ?)")
+		addItemStatement, err := db.Prepare("INSERT INTO inventory_items (name, expiration_date) VALUES (?, ?)")
 		panicIfErr(err)
 		defer addItemStatement.Close()
 
@@ -152,7 +152,7 @@ func main() {
 		panicIfErr(err)
 
 		if updateItemRequest.PostponeDays > 0 {
-			itemRow := db.QueryRow("SELECT name, expiration_date FROM items WHERE key = ?", updateItemRequest.Key)
+			itemRow := db.QueryRow("SELECT name, expiration_date FROM inventory_items WHERE key = ?", updateItemRequest.Key)
 			var expirationDate string
 			err = itemRow.Scan(&updateItemRequest.Name, &expirationDate)
 			panicIfErr(err)
@@ -169,14 +169,14 @@ func main() {
 			}
 			updateItemRequest.ExpirationDate = postponedExpirationTime.Format("2006-01-02")
 
-			updateItemPostponeDaysStatement, err := db.Prepare("UPDATE items SET postpone_count = postpone_count + 1 WHERE key = ?")
+			updateItemPostponeDaysStatement, err := db.Prepare("UPDATE inventory_items SET postpone_count = postpone_count + 1 WHERE key = ?")
 			panicIfErr(err)
 			defer updateItemPostponeDaysStatement.Close()
 
 			_, err = updateItemPostponeDaysStatement.Exec(updateItemRequest.Key)
 			panicIfErr(err)
 		}
-		updateItemStatement, err := db.Prepare("UPDATE items SET name = ?, expiration_date = ? WHERE key = ?")
+		updateItemStatement, err := db.Prepare("UPDATE inventory_items SET name = ?, expiration_date = ? WHERE key = ?")
 		panicIfErr(err)
 		defer updateItemStatement.Close()
 
@@ -200,7 +200,7 @@ func main() {
 		err = json.Unmarshal(requestBodyBytes, &deleteItemRequest)
 		panicIfErr(err)
 
-		deleteItemStatement, err := db.Prepare("DELETE FROM items WHERE key = ?")
+		deleteItemStatement, err := db.Prepare("DELETE FROM inventory_items WHERE key = ?")
 		panicIfErr(err)
 		defer deleteItemStatement.Close()
 
@@ -228,7 +228,7 @@ func main() {
 		type SummaryResponse struct {
 			Lists []ExistingListResponse `json:"lists"`
 		}
-		var existingItemResponses []ExistingItemResponse
+		var existingListResponses []ExistingListResponse
 
 		itemRows, err := db.Query(`
 		SELECT
@@ -246,35 +246,32 @@ func main() {
 		panicIfErr(err)
 		defer itemRows.Close()
 
-		currentTime := time.Now()
-		var existingListResponse ExistingListResponse
 		for itemRows.Next() {
 			var existingItemResponse ExistingItemResponse
 			var listName string
 			err := itemRows.Scan(&existingItemResponse.Key, &existingItemResponse.Name, &existingItemResponse.Aisle, &existingItemResponse.Quantity, &listName)
 			panicIfErr(err)
-		}
 
-		auth := r.Header.Get("Authorization")
-		authHeader := strings.Split(auth, " ")
-		userRow := db.QueryRow("SELECT trash_day FROM users WHERE encoding = ?", authHeader[1])
-		var trashDay string
-		err = userRow.Scan(&trashDay)
-		if err != nil {
-			// Ignore
-		}
-
-		tomorrowTime := currentTime.Add(time.Hour * 24)
-		tomorrowIsTrashDay := trashDay == strings.ToLower(tomorrowTime.Weekday().String())
-		var arduinoMessage string
-		if tomorrowIsTrashDay {
-			arduinoMessage = "Trash day is\ntomorrow!\nClean out anything\nthat's expiring!"
+			matchingListFound := false
+			for _, existingList := range existingListResponses {
+				if existingList.Key == existingItemResponse.Key {
+					existingList.Items = append(existingList.Items, existingItemResponse)
+					matchingListFound = true
+					break
+				}
+			}
+			if !matchingListFound {
+				existingListResponse := ExistingListResponse{
+					Key:   existingItemResponse.Key,
+					Name:  existingItemResponse.Name,
+					Items: []ExistingItemResponse{existingItemResponse},
+				}
+				existingListResponses = append(existingListResponses, existingListResponse)
+			}
 		}
 
 		summaryResponse := SummaryResponse{
-			Items:          existingItemResponses,
-			TrashDay:       trashDay,
-			ArduinoMessage: arduinoMessage,
+			Lists: existingListResponses,
 		}
 
 		var jsonResponse []byte
@@ -427,6 +424,7 @@ func main() {
 	router.HandleFunc("POST /api/inventory_item", postAPIInventoryItemHandler)
 	router.HandleFunc("PUT /api/inventory_item", putAPIInventoryItemHandler)
 	router.HandleFunc("DELETE /api/inventory_item", deleteAPIInventoryItemHandler)
+	router.HandleFunc("GET /api/shopping_lists_summary", getAPIShoppingListsSummaryHandler)
 	router.HandleFunc("POST /api/shopping_lists_item", postAPIShoppingListsItemHandler)
 	router.HandleFunc("PUT /api/shopping_lists_item", putAPIShoppingListsItemHandler)
 	router.HandleFunc("DELETE /api/shopping_lists_item", deleteAPIShoppingListsItemHandler)
@@ -495,7 +493,7 @@ func initializeTables() {
 	createShoppingListsListsTableStatement, err := db.Prepare(`
 		CREATE TABLE IF NOT EXISTS shopping_lists_lists (
 			key INTEGER PRIMARY KEY,
-			name string,
+			name string
 		);
 	`)
 	panicIfErr(err)

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import Inventory from './page/Inventory/Inventory';
+import ShoppingLists from './page/ShoppingLists/ShoppingLists';
 import Constants from './Constants';
 
 export default function App() {
@@ -29,6 +30,7 @@ export default function App() {
 					<div className='text-3xl'>user.name</div>
 				</div>
 				{activePage === Constants.Page.INVENTORY && <Inventory />}
+				{activePage === Constants.Page.SHOPPING_LISTS && <ShoppingLists />}
 			</div >
 		</>
 	);
